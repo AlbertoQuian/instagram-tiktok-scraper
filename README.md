@@ -3,6 +3,7 @@
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?logo=python&logoColor=white)
 ![License: GPL v3](https://img.shields.io/badge/license-GPL%20v3-blue)
 ![Platforms: macOS · Linux · Windows](https://img.shields.io/badge/platforms-macOS%20%C2%B7%20Linux%20%C2%B7%20Windows-lightgrey)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19054043.svg)](https://doi.org/10.5281/zenodo.19054043)
 
 A Python-based tool for scraping public Instagram and TikTok profiles,
 designed for **academic research** and data analysis. Collects posts,
@@ -360,21 +361,21 @@ If you use this tool in academic work, please cite it using the metadata in
 [CITATION.cff](CITATION.cff), or as:
 
 ```bibtex
-@software{quian2025scraper,
+@software{quian2026scraper,
   author       = {Quian, Alberto},
   title        = {Instagram \& TikTok Scraper},
-  year         = {2025},
+  year         = {2026},
   institution  = {Universidade de Santiago de Compostela},
   url          = {https://github.com/AlbertoQuian/instagram-tiktok-scraper},
+  doi          = {10.5281/zenodo.19054043},
   license      = {GPL-3.0}
 }
 ```
 
 Or in APA style:
 
-> Quian, A. (2025). *Instagram & TikTok Scraper* [Computer software].
-> Universidade de Santiago de Compostela.
-> https://github.com/AlbertoQuian/instagram-tiktok-scraper
+> Quian, A. (2026). *Instagram & TikTok Scraper* (v1.0.0) [Computer software].
+> Zenodo. https://doi.org/10.5281/zenodo.19054043
 
 ## License
 
