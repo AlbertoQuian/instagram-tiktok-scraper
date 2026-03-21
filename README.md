@@ -267,8 +267,8 @@ to restrict scraping to specific accounts.
 ├── CONTRIBUTING.md               # Contribution guidelines
 ├── LICENSE                       # GNU General Public License v3.0
 ├── THIRD_PARTY_LICENSES.md
-├── paper.md                      # JOSS paper
-├── paper.bib                     # JOSS paper references
+├── paper.md                      # paper
+├── paper.bib                     # paper references
 └── .gitignore
 ```
 
