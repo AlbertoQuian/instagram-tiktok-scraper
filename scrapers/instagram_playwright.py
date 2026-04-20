@@ -392,12 +392,12 @@ class InstagramPlaywrightScraper:
                     "link": href,
                     "caption": caption,
                     "date": date_str,
-                    "likes": 0,
-                    "comments": 0,
-                    "views": 0,
+                    "likes": None,
+                    "comments": None,
+                    "views": None,
                     "format": "image",
                     "media_files": [],
-                    "notes": "grid_fallback",
+                    "notes": "grid_fallback (no engagement data)",
                 }
                 posts.append(post)
 
@@ -558,15 +558,19 @@ class InstagramPlaywrightScraper:
         # Hashtags
         hashtags = re.findall(r"#(\w+)", caption)
 
-        # Engagement
-        likes = node.get("edge_media_preview_like", {}).get("count", 0)
-        if not likes:
-            likes = node.get("like_count", 0)
-        comments = node.get("edge_media_to_comment", {}).get("count", 0)
-        if not comments:
-            comments = node.get("comment_count", 0)
-        views = node.get("video_view_count", 0)
-        fb_likes = node.get("edge_media_preview_like", {}).get("count", 0)
+        # Engagement – prefer modern fields first, fall back to legacy
+        likes = node.get("like_count")
+        if likes is None:
+            likes = (
+                node.get("edge_liked_by", {}).get("count")
+                or node.get("edge_media_preview_like", {}).get("count")
+                or 0
+            )
+        comments = node.get("comment_count")
+        if comments is None:
+            comments = node.get("edge_media_to_comment", {}).get("count") or 0
+        views = node.get("video_view_count") or node.get("view_count") or 0
+        fb_likes = node.get("fb_like_count") or 0
 
         # Format
         typename = node.get("__typename", "")
