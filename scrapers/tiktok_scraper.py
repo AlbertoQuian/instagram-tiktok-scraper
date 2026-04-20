@@ -10,6 +10,8 @@ Supports:
   - Carousel reconstruction (image slides → MP4 slideshow)
   - Screenshot generation via embed URLs
 """
+from __future__ import annotations
+
 import json
 import logging
 import os

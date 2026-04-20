@@ -1,6 +1,6 @@
 # Instagram & TikTok Scraper
 
-![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?logo=python&logoColor=white)
+![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue?logo=python&logoColor=white)
 ![License: GPL v3](https://img.shields.io/badge/license-GPL%20v3-blue)
 ![Platforms: macOS · Linux · Windows](https://img.shields.io/badge/platforms-macOS%20%C2%B7%20Linux%20%C2%B7%20Windows-lightgrey)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19054043.svg)](https://doi.org/10.5281/zenodo.19054043)
@@ -49,7 +49,7 @@ date range.
 
 | Dependency | Notes |
 |---|---|
-| **Python** | 3.10 or newer |
+| **Python** | 3.9 or newer |
 | **ffmpeg** | Required for TikTok carousel reconstruction and media processing |
 | **Chromium** | Auto-installed by Playwright (see [Installation](#installation)) |
 
@@ -320,7 +320,7 @@ The `--export` flag generates a unified CSV with the following columns:
 | Language detection | [lingua-py](https://github.com/pemistahl/lingua-py) |
 | HTTP client | [httpx](https://github.com/encode/httpx) |
 | Data export | [pandas](https://pandas.pydata.org/) |
-| Runtime | Python 3.10+ |
+| Runtime | Python 3.9+ |
 
 ## Testing
 

@@ -6,6 +6,7 @@
 CLI entry point for the Instagram & TikTok scraper.
 Orchestrates scraping, media downloads, screenshots, and CSV export.
 """
+from __future__ import annotations
 
 import argparse
 import json

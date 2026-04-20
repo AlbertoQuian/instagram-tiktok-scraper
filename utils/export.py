@@ -4,6 +4,7 @@
 """
 Consolidate scraped metadata from all platforms into a single CSV dataset.
 """
+from __future__ import annotations
 
 import json
 import logging

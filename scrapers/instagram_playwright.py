@@ -8,6 +8,8 @@ Intercepts the web_profile_info API to retrieve engagement metrics
 (likes, comments, views) and exact timestamps without login.
 Limitation: without authentication only ~12 recent posts per profile.
 """
+from __future__ import annotations
+
 import json
 import logging
 import os
