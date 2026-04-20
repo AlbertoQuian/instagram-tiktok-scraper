@@ -253,9 +253,9 @@ class TikTokScraper:
         shares = entry.get("repost_count", 0) or entry.get("share_count", 0) or 0
 
         # Format detection: carousel vs video
-        fmt = "video"
+        fmt = "Video"
         if entry.get("imagePost") or (not entry.get("formats") and entry.get("duration", 0) == 0):
-            fmt = "carousel"
+            fmt = "Carousel"
 
         # Duration
         duration = entry.get("duration", 0) or 0
@@ -275,6 +275,7 @@ class TikTokScraper:
             "username": username,
             "account_name": account_name,
             "account_id": account_id,
+            "platform": "TikTok",
             "category": category,
             "date": date_str,
             "caption": caption,
@@ -409,7 +410,7 @@ class TikTokScraper:
                                         output_mp4.name,
                                         output_mp4.stat().st_size / 1024 / 1024)
                             post["media_files"] = [output_mp4.name]
-                            post["format"] = "carousel"
+                            post["format"] = "Carousel"
                             post["notes"] = f"carousel_reconstructed ({len(slide_paths)} slides)"
                             # Remove loose .m4a since it's embedded in the mp4
                             if m4a_path.exists():
@@ -852,6 +853,7 @@ class TikTokScraper:
             "username": username,
             "account_name": account_name,
             "account_id": account_id,
+            "platform": "TikTok",
             "category": category,
             "date": date_str,
             "caption": caption,
@@ -860,7 +862,7 @@ class TikTokScraper:
             "comments": comments,
             "views": views,
             "shares": shares,
-            "format": "video",
+            "format": "Video",
             "duration": duration,
             "thumbnail": data.get("video", {}).get("cover", ""),
             "media_files": [],
