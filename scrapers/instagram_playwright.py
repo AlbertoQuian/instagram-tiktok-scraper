@@ -211,6 +211,7 @@ class InstagramPlaywrightScraper:
                 self._fast_api_paginate(
                     page, api_nodes, _has_next, _oldest_ts, _end_cursor,
                     _request_template[0], start_dt, max_posts,
+                    username=username,
                 )
 
             # ── Grid fallback (scroll) ───────────────────────────────
@@ -241,6 +242,12 @@ class InstagramPlaywrightScraper:
             if self.download_media:
                 self._reconstruct_ig_carousels(posts, media_dir)
 
+            # ── Save metadata BEFORE screenshots (so data is not lost if screenshots fail) ──
+            meta_file = profile_dir / f"{username}_metadata.json"
+            with open(meta_file, "w", encoding="utf-8") as f:
+                json.dump(posts, f, ensure_ascii=False, indent=2)
+            logger.info("Metadata saved (%d posts) to %s", len(posts), meta_file)
+
             # ── Screenshots ──────────────────────────────────────────
             if self.take_screenshots and posts:
                 logger.info(
@@ -253,16 +260,15 @@ class InstagramPlaywrightScraper:
                     ss = self._take_post_screenshot(page, link, screenshots_dir, post["post_id"])
                     if ss:
                         post["screenshot"] = str(ss.relative_to(self.output_dir))
-                    # Progressive delay: 3s base, extra 2s every 5 screenshots
-                    delay = 3 + (2 * (idx // 5))
+                    # Progressive delay: 3s base, extra 1s every 10 screenshots, max 8s
+                    delay = min(3 + (idx // 10), 8)
                     time.sleep(delay)
 
-            browser.close()
+                # Re-save metadata with screenshot paths
+                with open(meta_file, "w", encoding="utf-8") as f:
+                    json.dump(posts, f, ensure_ascii=False, indent=2)
 
-        # Save metadata
-        meta_file = profile_dir / f"{username}_metadata.json"
-        with open(meta_file, "w", encoding="utf-8") as f:
-            json.dump(posts, f, ensure_ascii=False, indent=2)
+            browser.close()
 
         logger.info(
             "Instagram @%s complete: %d posts saved (%s)",
@@ -273,45 +279,103 @@ class InstagramPlaywrightScraper:
     # ------------------------------------------------------------------
     # Fast API pagination
     # ------------------------------------------------------------------
+    # Known doc_id for PolarisProfilePostsTabContentQuery_connection
+    PAGINATION_DOC_ID = "34030839746560163"
+    PAGINATION_FRIENDLY_NAME = "PolarisProfilePostsTabContentQuery_connection"
+
     def _fast_api_paginate(
         self, page, api_nodes, _has_next, _oldest_ts, _end_cursor,
-        template, start_dt, max_posts,
+        template, start_dt, max_posts, username=None,
     ):
-        """Paginate via direct GraphQL fetch() calls using captured session tokens."""
-        logger.info("Starting fast API pagination (cursor: %s...)", str(_end_cursor[0])[:20])
-        pages = 0
-        max_pages = max_posts // 12 + 2
+        """Paginate via direct GraphQL fetch() calls using captured session tokens.
 
-        while _has_next[0] and _end_cursor[0] and pages < max_pages:
-            cursor = _end_cursor[0]
-            old_count = len(api_nodes)
-            _has_next[0] = False
-            _end_cursor[0] = None
+        Rebuilds the request from scratch each page (like the political-party
+        scraper) instead of doing fragile regex replacement on the captured body.
+        """
+        from urllib.parse import parse_qs, urlencode
+
+        logger.info("Starting fast API pagination (cursor: %s...)", str(_end_cursor[0])[:20])
+        max_pages = 500
+
+        # Parse the captured template to reuse session tokens
+        raw_params = parse_qs(template["body"])
+        base_params = {k: v[0] for k, v in raw_params.items()}
+
+        # Build headers from the captured template
+        tpl_headers = template.get("headers", {})
+        fetch_headers = {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-IG-App-ID": tpl_headers.get("x-ig-app-id", "936619743392459"),
+            "X-ASBD-ID": tpl_headers.get("x-asbd-id", "359341"),
+            "X-FB-Friendly-Name": self.PAGINATION_FRIENDLY_NAME,
+            "X-FB-LSD": tpl_headers.get("x-fb-lsd", base_params.get("lsd", "")),
+            "X-CSRFToken": tpl_headers.get("x-csrftoken", ""),
+        }
+        bloks = tpl_headers.get("x-bloks-version-id")
+        if bloks:
+            fetch_headers["X-Bloks-Version-ID"] = bloks
+
+        # Override pagination fields
+        base_params["doc_id"] = self.PAGINATION_DOC_ID
+        base_params["fb_api_req_friendly_name"] = self.PAGINATION_FRIENDLY_NAME
+
+        # Extract username from template variables if not provided
+        if not username:
+            try:
+                old_vars = json.loads(base_params.get("variables", "{}"))
+                username = old_vars.get("username", "")
+            except Exception:
+                username = ""
+
+        cursor = _end_cursor[0]
+
+        for page_num in range(max_pages):
+            variables = json.dumps({
+                "after": cursor,
+                "before": None,
+                "data": {
+                    "count": 12,
+                    "include_reel_media_seen_timestamp": True,
+                    "include_relationship_info": True,
+                    "latest_besties_reel_media": True,
+                    "latest_reel_media": True,
+                },
+                "first": 12,
+                "last": None,
+                "username": username,
+            })
+            base_params["variables"] = variables
+            body = urlencode(base_params)
 
             try:
-                body = template["body"]
-                body = re.sub(r'"after":"[^"]*"', f'"after":"{cursor}"', body)
-                body = re.sub(r'"after":\s*"[^"]*"', f'"after":"{cursor}"', body)
-
-                js_code = """
-                async ([url, body, headers]) => {
-                    const resp = await fetch(url, {
-                        method: 'POST',
-                        headers: headers,
-                        body: body,
-                        credentials: 'include',
-                    });
-                    return await resp.json();
-                }
-                """
                 result = page.evaluate(
-                    js_code, [template["url"], body, template["headers"]]
+                    """async ({body, headers}) => {
+                        const r = await fetch('/graphql/query', {
+                            method: 'POST',
+                            headers: headers,
+                            body: body,
+                            credentials: 'same-origin',
+                        });
+                        return await r.json();
+                    }""",
+                    {"body": body, "headers": fetch_headers},
                 )
+            except Exception as exc:
+                logger.warning("API pagination error on page %d: %s", page_num + 1, exc)
+                break
 
-                data = result.get("data", {}) if isinstance(result, dict) else {}
-                edges = []
-                pg_info = {}
+            data = result.get("data", {}) if isinstance(result, dict) else {}
+            edges = []
+            pg_info = {}
 
+            # Look for edges in response — try user_timeline first, then generic
+            for key, val in data.items():
+                if "user_timeline" in key and isinstance(val, dict):
+                    edges = val.get("edges", [])
+                    pg_info = val.get("page_info", {})
+                    break
+
+            if not edges:
                 for val in data.values():
                     if isinstance(val, dict):
                         if isinstance(val.get("edges"), list) and val["edges"]:
@@ -326,37 +390,48 @@ class InstagramPlaywrightScraper:
                     if edges:
                         break
 
-                for edge in edges:
-                    node = edge.get("node", {})
-                    sc = node.get("shortcode") or node.get("code")
-                    if sc and sc not in api_nodes:
-                        api_nodes[sc] = node
-                        ts = node.get("taken_at_timestamp") or node.get("taken_at") or 0
-                        if ts and ts < _oldest_ts[0]:
-                            _oldest_ts[0] = ts
-
-                if "has_next_page" in pg_info:
-                    _has_next[0] = pg_info["has_next_page"]
-                if pg_info.get("end_cursor"):
-                    _end_cursor[0] = pg_info["end_cursor"]
-
-                new_count = len(api_nodes) - old_count
-                pages += 1
-                logger.debug("API page %d: +%d posts (total %d)", pages, new_count, len(api_nodes))
-
-                if new_count == 0:
-                    break
-
-                # Stop if oldest post is before study period
-                if _oldest_ts[0] < start_dt.timestamp():
-                    logger.info("Reached posts before study period — stopping pagination")
-                    break
-
-                time.sleep(1.5)
-
-            except Exception as e:
-                logger.warning("API pagination error on page %d: %s", pages + 1, e)
+            if not edges:
+                logger.info("API pagination: no edges on page %d. Total: %d", page_num + 1, len(api_nodes))
                 break
+
+            new_count = 0
+            for edge in edges:
+                node = edge.get("node", {})
+                sc = node.get("shortcode") or node.get("code")
+                if sc and sc not in api_nodes:
+                    api_nodes[sc] = node
+                    new_count += 1
+                    ts = node.get("taken_at_timestamp") or node.get("taken_at") or 0
+                    if ts and ts < _oldest_ts[0]:
+                        _oldest_ts[0] = ts
+
+            cursor = pg_info.get("end_cursor")
+            has_next = pg_info.get("has_next_page", False)
+            _has_next[0] = has_next
+            _end_cursor[0] = cursor
+
+            logger.debug("API page %d: +%d posts (total %d)", page_num + 1, new_count, len(api_nodes))
+
+            # Reached posts before study period?
+            if _oldest_ts[0] != float('inf') and _oldest_ts[0] < start_dt.timestamp():
+                logger.info("Reached posts before study period — stopping pagination")
+                break
+
+            if not has_next or not cursor:
+                logger.info("API pagination: end of feed on page %d. Total: %d", page_num + 1, len(api_nodes))
+                break
+
+            if (page_num + 1) % 10 == 0:
+                oldest_str = (
+                    datetime.fromtimestamp(_oldest_ts[0], tz=timezone.utc).date()
+                    if _oldest_ts[0] != float('inf') else '?'
+                )
+                logger.info(
+                    "API page %d: %d posts, oldest: %s",
+                    page_num + 1, len(api_nodes), oldest_str,
+                )
+
+            time.sleep(0.5)
 
         logger.info("API pagination complete: %d total posts intercepted", len(api_nodes))
 
@@ -571,13 +646,12 @@ class InstagramPlaywrightScraper:
                 likes = (
                     node.get("edge_liked_by", {}).get("count")
                     or node.get("edge_media_preview_like", {}).get("count")
-                    or 0
                 )
-            views = node.get("video_view_count") or node.get("view_count") or 0
+            views = node.get("video_view_count") or node.get("view_count")
         comments = node.get("comment_count")
         if comments is None:
-            comments = node.get("edge_media_to_comment", {}).get("count") or 0
-        fb_likes = node.get("fb_like_count") or 0
+            comments = node.get("edge_media_to_comment", {}).get("count")
+        fb_likes = node.get("fb_like_count")
 
         # Format
         typename = node.get("__typename", "")
@@ -587,11 +661,11 @@ class InstagramPlaywrightScraper:
         has_carousel = bool(node.get("carousel_media"))
 
         if "Sidecar" in typename or media_type == 8 or has_sidecar or has_carousel:
-            fmt = "carousel"
+            fmt = "Carousel"
         elif is_video or media_type == 2:
-            fmt = "video"
+            fmt = "Short-form Video"
         else:
-            fmt = "image"
+            fmt = "Image"
 
         # Thumbnail
         thumb = node.get("thumbnail_src", "") or node.get("display_url", "")
@@ -599,11 +673,12 @@ class InstagramPlaywrightScraper:
         link = f"/p/{sc}/"
         notes = ""
         if node.get("product_type") == "clips":
-            fmt = "video"
+            fmt = "Short-form Video"
             notes = "reel"
             link = f"/reel/{sc}/"
 
         return {
+            "platform": "Instagram",
             "post_id": sc,
             "post_url": f"https://www.instagram.com/p/{sc}/",
             "link": link,
@@ -618,7 +693,7 @@ class InstagramPlaywrightScraper:
             "likes_hidden": likes_hidden,
             "comments": comments,
             "views": views,
-            "shares": 0,
+            "shares": None,
             "fb_likes": fb_likes,
             "format": fmt,
             "thumbnail": thumb,
