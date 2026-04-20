@@ -559,17 +559,24 @@ class InstagramPlaywrightScraper:
         hashtags = re.findall(r"#(\w+)", caption)
 
         # Engagement – prefer modern fields first, fall back to legacy
-        likes = node.get("like_count")
-        if likes is None:
-            likes = (
-                node.get("edge_liked_by", {}).get("count")
-                or node.get("edge_media_preview_like", {}).get("count")
-                or 0
-            )
+        likes_hidden = bool(node.get("like_and_view_counts_disabled"))
+        if likes_hidden:
+            # Instagram hides like/view counts: like_count only reflects preview
+            # likers (mutual followers), not the real total. Store None.
+            likes = None
+            views = None
+        else:
+            likes = node.get("like_count")
+            if likes is None:
+                likes = (
+                    node.get("edge_liked_by", {}).get("count")
+                    or node.get("edge_media_preview_like", {}).get("count")
+                    or 0
+                )
+            views = node.get("video_view_count") or node.get("view_count") or 0
         comments = node.get("comment_count")
         if comments is None:
             comments = node.get("edge_media_to_comment", {}).get("count") or 0
-        views = node.get("video_view_count") or node.get("view_count") or 0
         fb_likes = node.get("fb_like_count") or 0
 
         # Format
@@ -608,6 +615,7 @@ class InstagramPlaywrightScraper:
             "caption": caption,
             "hashtags": hashtags,
             "likes": likes,
+            "likes_hidden": likes_hidden,
             "comments": comments,
             "views": views,
             "shares": 0,
