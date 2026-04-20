@@ -66,11 +66,6 @@ def parse_args() -> argparse.Namespace:
         help="Scrape only accounts matching a specific category",
     )
     parser.add_argument(
-        "--export",
-        action="store_true",
-        help="Export consolidated CSV after scraping",
-    )
-    parser.add_argument(
         "--screenshots-only",
         action="store_true",
         help="Generate screenshots from existing metadata (no scraping)",
@@ -172,15 +167,14 @@ def main() -> None:
     # Run scraping
     run_scraping(accounts_config, args.platform, start_date, end_date, category)
 
-    # Export CSV
-    if args.export:
-        logger.info("Exporting consolidated CSV...")
-        export_to_csv(
-            raw_dir=RAW_DIR,
-            output_dir=EXPORT_SETTINGS["output_dir"],
-            filename=EXPORT_SETTINGS["filename"],
-        )
-        logger.info("Export complete.")
+    # Export CSV (always automatic after scraping)
+    logger.info("Exporting consolidated CSV...")
+    export_to_csv(
+        raw_dir=RAW_DIR,
+        output_dir=EXPORT_SETTINGS["output_dir"],
+        filename=EXPORT_SETTINGS["filename"],
+    )
+    logger.info("Export complete.")
 
 
 if __name__ == "__main__":
