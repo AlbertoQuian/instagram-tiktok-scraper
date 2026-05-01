@@ -163,3 +163,18 @@ def test_no_limit_is_same_quantity_control(monkeypatch, tmp_path):
     assert 'id="run-limit-none" name="run-limit-mode" type="radio" value="0" checked' in html
     assert 'id="run-max-posts" class="input compact-number" type="number" min="1" step="1" value="200" placeholder="200" disabled' in html
     assert "Alcance" not in html
+
+
+def test_connections_page_explains_tiktok_optional(monkeypatch, tmp_path):
+    instagram_path = tmp_path / "instagram_cookies.json"
+    tiktok_path = tmp_path / "tiktok_cookies.txt"
+    monkeypatch.setitem(web_app.INSTAGRAM_SETTINGS, "cookies_path", instagram_path)
+    monkeypatch.setitem(web_app.TIKTOK_SETTINGS, "cookies_path", tiktok_path)
+
+    response = web_app.app.test_client().get("/cookies?lang=es")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert 'class="content-grid two-columns cookies-grid"' in html
+    assert "Opcional; no conectada" in html
+    assert "Si no tienes cuenta" in html

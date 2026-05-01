@@ -339,6 +339,10 @@ a:hover {
     grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
 }
 
+.cookies-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .status-column {
     display: grid;
     gap: 18px;
