@@ -111,16 +111,92 @@ function watchTask(taskId, button) {
 }
 
 function toggleCustomLimit() {
-    const mode = document.getElementById('run-limit-mode')?.value || '200';
-    const field = document.getElementById('custom-limit-field');
-    if (!field) return;
-    field.classList.toggle('hidden', mode !== 'custom');
+    const noLimit = document.getElementById('run-no-limit')?.checked === true;
+    const input = document.getElementById('run-max-posts');
+    if (!input) return;
+    input.disabled = noLimit;
 }
 
 function getRunLimit() {
-    const mode = document.getElementById('run-limit-mode')?.value || '200';
-    if (mode === 'custom') return document.getElementById('run-max-posts')?.value || '';
-    return mode;
+    if (document.getElementById('run-no-limit')?.checked === true) return '0';
+    return document.getElementById('run-max-posts')?.value || '';
+}
+
+function collectRunSettings() {
+    const noLimit = document.getElementById('run-no-limit')?.checked === true;
+    return {
+        platform: document.getElementById('run-platform')?.value || 'all',
+        start_date: document.getElementById('run-start')?.value || '',
+        end_date: document.getElementById('run-end')?.value || '',
+        limit_mode: noLimit ? '0' : 'custom',
+        custom_limit: document.getElementById('run-max-posts')?.value || '',
+        download_media: document.getElementById('run-download-media')?.checked !== false,
+        take_screenshots: document.getElementById('run-take-screenshots')?.checked !== false,
+        export_after: document.getElementById('run-export-after')?.checked !== false,
+    };
+}
+
+function setRunAutosaveStatus(key) {
+    const element = document.getElementById('run-autosave-status');
+    if (!element) return;
+    element.textContent = uiText(key);
+    element.dataset.state = key;
+}
+
+let runSettingsTimer = null;
+
+function saveRunSettingsNow() {
+    if (!document.getElementById('run-platform')) return Promise.resolve();
+    setRunAutosaveStatus('autosaving');
+    return postJSON('/api/settings/run', collectRunSettings()).then(result => {
+        if (!result.ok || result.data.error) {
+            setRunAutosaveStatus('autosave_failed');
+            return;
+        }
+        setRunAutosaveStatus('autosaved');
+    }).catch(() => {
+        setRunAutosaveStatus('autosave_failed');
+    });
+}
+
+function saveRunSettingsOnLeave() {
+    if (!document.getElementById('run-platform')) return;
+    const payload = JSON.stringify(collectRunSettings());
+    if (navigator.sendBeacon) {
+        const blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon('/api/settings/run', blob);
+        return;
+    }
+    fetch('/api/settings/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+        keepalive: true,
+    }).catch(() => {});
+}
+
+function scheduleRunSettingsSave() {
+    if (!document.getElementById('run-platform')) return;
+    setRunAutosaveStatus('autosaving');
+    clearTimeout(runSettingsTimer);
+    runSettingsTimer = setTimeout(() => saveRunSettingsNow(), 450);
+}
+
+function bindRunSettingsAutosave() {
+    if (!document.getElementById('run-platform')) return;
+    toggleCustomLimit();
+    ['run-platform', 'run-no-limit', 'run-download-media', 'run-take-screenshots', 'run-export-after'].forEach(id => {
+        document.getElementById(id)?.addEventListener('change', () => {
+            toggleCustomLimit();
+            scheduleRunSettingsSave();
+        });
+    });
+    ['run-start', 'run-end', 'run-max-posts'].forEach(id => {
+        const element = document.getElementById(id);
+        element?.addEventListener('input', scheduleRunSettingsSave);
+        element?.addEventListener('change', scheduleRunSettingsSave);
+    });
+    window.addEventListener('beforeunload', saveRunSettingsOnLeave);
 }
 
 function selectedRunAccounts(platform) {
@@ -146,20 +222,17 @@ function launchScrape(button) {
         return;
     }
     const payload = {
-        platform,
-        start_date: document.getElementById('run-start')?.value || '',
-        end_date: document.getElementById('run-end')?.value || '',
+        ...collectRunSettings(),
         max_posts: getRunLimit(),
-        download_media: document.getElementById('run-download-media')?.checked !== false,
-        take_screenshots: document.getElementById('run-take-screenshots')?.checked !== false,
-        export_after: document.getElementById('run-export-after')?.checked !== false,
         accounts,
     };
+    saveRunSettingsNow();
     runTask('/api/run/scrape', payload, button);
 }
 
 function launchScreenshots(button) {
     const platform = document.getElementById('run-platform')?.value || 'all';
+    saveRunSettingsNow();
     runTask('/api/run/screenshots', { platform }, button);
 }
 
@@ -414,3 +487,7 @@ function applyDataFilters() {
     });
     window.location.href = '/data?' + params.toString();
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    bindRunSettingsAutosave();
+});

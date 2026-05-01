@@ -130,6 +130,14 @@ Then edit `config/accounts.json` with your target accounts:
         "start": "",
         "end": ""
     },
+    "run": {
+      "platform": "all",
+      "limit_mode": "custom",
+      "custom_limit": "200",
+      "download_media": true,
+      "take_screenshots": true,
+      "export_after": true
+    },
     "storage": {
       "data_dir": ""
     },
@@ -154,6 +162,11 @@ The optional `storage.data_dir` field controls where scraped metadata, media,
 screenshots, and CSV files are saved. Leave it blank to use the repository's
 git-ignored `data/` directory. In the GUI, open **Settings** and either paste a
 folder path or use **Choose folder** to load it.
+
+The web interface saves Dashboard choices automatically on this computer:
+platform, date range, amount per profile, media downloads, screenshots, and CSV
+export. These values are stored locally in `config/accounts.json` so they are
+still there after navigating between pages or restarting the GUI.
 
 ### Instagram Session Cookies
 

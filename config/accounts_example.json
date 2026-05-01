@@ -4,6 +4,14 @@
         "start": "",
         "end": ""
     },
+    "run": {
+        "platform": "all",
+        "limit_mode": "custom",
+        "custom_limit": "200",
+        "download_media": true,
+        "take_screenshots": true,
+        "export_after": true
+    },
     "storage": {
         "data_dir": ""
     },

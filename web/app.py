@@ -45,6 +45,14 @@ from web.i18n import DEFAULT_LANGUAGE, LANGUAGES, translate  # noqa: E402
 DEFAULT_CONFIG: Dict[str, Any] = {
     "project": "",
     "study_period": {"start": "", "end": ""},
+    "run": {
+        "platform": "all",
+        "limit_mode": "custom",
+        "custom_limit": "200",
+        "download_media": True,
+        "take_screenshots": True,
+        "export_after": True,
+    },
     "storage": {"data_dir": ""},
     "accounts": [],
 }
@@ -77,6 +85,9 @@ JS_TRANSLATION_KEYS = [
     "choosing_folder",
     "folder_loaded",
     "folder_picker_cancelled",
+    "autosaving",
+    "autosaved",
+    "autosave_failed",
 ]
 
 app = Flask(
@@ -106,6 +117,7 @@ def _load_config() -> Dict[str, Any]:
         return _clone_default_config()
     config.setdefault("project", DEFAULT_CONFIG["project"])
     config.setdefault("study_period", dict(DEFAULT_CONFIG["study_period"]))
+    config.setdefault("run", dict(DEFAULT_CONFIG["run"]))
     config.setdefault("storage", dict(DEFAULT_CONFIG["storage"]))
     config.setdefault("accounts", [])
     return config
@@ -278,6 +290,79 @@ def _study_period(config: Dict[str, Any]) -> Dict[str, str]:
         "start": str(period.get("start") or period.get("start_date") or ""),
         "end": str(period.get("end") or period.get("end_date") or ""),
     }
+
+
+def _bool_setting(value: Any, default: bool = True) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"true", "1", "yes", "on"}:
+            return True
+        if lowered in {"false", "0", "no", "off"}:
+            return False
+    return default
+
+
+def _positive_int_text(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text.isdigit():
+        return ""
+    number = int(text)
+    return str(number) if number > 0 else ""
+
+
+def _run_settings(config: Dict[str, Any]) -> Dict[str, Any]:
+    raw = config.get("run")
+    if not isinstance(raw, dict):
+        raw = {}
+    defaults = DEFAULT_CONFIG["run"]
+    platform = str(raw.get("platform") or defaults["platform"]).strip().lower()
+    if platform not in {"all", "instagram", "tiktok"}:
+        platform = str(defaults["platform"])
+    limit_mode = str(raw.get("limit_mode") or defaults["limit_mode"]).strip().lower()
+    custom_limit = _positive_int_text(raw.get("custom_limit"))
+    migrated_limit = _positive_int_text(limit_mode)
+    if migrated_limit:
+        custom_limit = migrated_limit
+        limit_mode = "custom"
+    elif limit_mode not in {"0", "custom"}:
+        limit_mode = str(defaults["limit_mode"])
+    if limit_mode == "custom" and not custom_limit:
+        custom_limit = str(defaults["custom_limit"])
+    return {
+        "platform": platform,
+        "limit_mode": limit_mode,
+        "custom_limit": custom_limit,
+        "download_media": _bool_setting(raw.get("download_media"), bool(defaults["download_media"])),
+        "take_screenshots": _bool_setting(raw.get("take_screenshots"), bool(defaults["take_screenshots"])),
+        "export_after": _bool_setting(raw.get("export_after"), bool(defaults["export_after"])),
+    }
+
+
+def _run_max_posts(settings: Dict[str, Any]) -> str:
+    if settings["limit_mode"] == "custom":
+        return settings.get("custom_limit") or ""
+    return str(settings["limit_mode"])
+
+
+def _apply_run_settings(config: Dict[str, Any], data: Dict[str, Any]) -> Dict[str, Any]:
+    current = _run_settings(config)
+    merged = {
+        **current,
+        "platform": data.get("platform", current["platform"]),
+        "limit_mode": data.get("limit_mode", current["limit_mode"]),
+        "custom_limit": data.get("custom_limit", current["custom_limit"]),
+        "download_media": data.get("download_media", current["download_media"]),
+        "take_screenshots": data.get("take_screenshots", current["take_screenshots"]),
+        "export_after": data.get("export_after", current["export_after"]),
+    }
+    config["run"] = _run_settings({"run": merged})
+    config["study_period"] = {
+        "start": str(data.get("start_date") or data.get("start") or "").strip(),
+        "end": str(data.get("end_date") or data.get("end") or "").strip(),
+    }
+    return config["run"]
 
 
 def _normalize_platform(value: str) -> str:
@@ -695,6 +780,7 @@ def index() -> str:
         accounts=accounts,
         categories=_categories(accounts),
         study_period=period,
+        run_settings=_run_settings(config),
         instagram_cookie=_translated_status(_cookie_status_json(Path(INSTAGRAM_SETTINGS["cookies_path"]))),
         tiktok_cookie=_translated_status(_cookie_status_text(Path(TIKTOK_SETTINGS["cookies_path"]))),
         csv_path=_csv_path(config),
@@ -804,6 +890,15 @@ def update_project_settings() -> Response:
     data_dir = str(data.get("data_dir") or "").strip()
     config["project"] = project
     config["storage"] = {"data_dir": data_dir}
+    _save_config(config)
+    return jsonify({"success": True, "message": translate(g.lang, "js.saved")})
+
+
+@app.route("/api/settings/run", methods=["POST"])
+def update_run_settings() -> Response:
+    data = request.get_json(silent=True) or {}
+    config = _load_config()
+    _apply_run_settings(config, data)
     _save_config(config)
     return jsonify({"success": True, "message": translate(g.lang, "js.saved")})
 
@@ -919,13 +1014,15 @@ def run_scrape() -> Response:
     config = _load_config()
     if not _accounts(config):
         return jsonify({"error": translate(g.lang, "js.select_account")}), 400
+    run_settings = _apply_run_settings(config, data)
+    _save_config(config)
     command = [sys.executable, str(BASE_DIR / "main.py"), "--platform", platform]
     category = str(data.get("category") or "all")
     if category and category != "all":
         command.extend(["--category", category])
     start_date = str(data.get("start_date") or "").strip()
     end_date = str(data.get("end_date") or "").strip()
-    max_posts = str(data.get("max_posts") or "").strip()
+    max_posts = str(data.get("max_posts") or _run_max_posts(run_settings)).strip()
     command.extend(["--start-date", start_date or "1970-01-01"])
     command.extend(["--end-date", end_date or datetime.now().strftime("%Y-%m-%d")])
     if max_posts:

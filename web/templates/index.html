@@ -57,6 +57,7 @@
             <div>
                 <h2>{{ _('run.title') }}</h2>
                 <p>{{ _('run.subtitle') }}</p>
+                <p class="autosave-note" id="run-autosave-status">{{ _('run.autosave_ready') }}</p>
             </div>
         </div>
 
@@ -64,24 +65,24 @@
             <label class="form-field">
                 <span>{{ _('run.platform') }}</span>
                 <select id="run-platform" class="input">
-                    <option value="all">Instagram + TikTok</option>
-                    <option value="instagram">Instagram</option>
-                    <option value="tiktok">TikTok</option>
+                    <option value="all" {% if run_settings.platform == 'all' %}selected{% endif %}>Instagram + TikTok</option>
+                    <option value="instagram" {% if run_settings.platform == 'instagram' %}selected{% endif %}>Instagram</option>
+                    <option value="tiktok" {% if run_settings.platform == 'tiktok' %}selected{% endif %}>TikTok</option>
                 </select>
             </label>
             <label class="form-field">
-                <span>{{ _('run.max_posts') }}</span>
-                <select id="run-limit-mode" class="input" onchange="toggleCustomLimit()">
-                    <option value="200">{{ _('run.limit_recommended') }}</option>
-                    <option value="50">{{ _('run.limit_50') }}</option>
-                    <option value="0">{{ _('run.limit_all') }}</option>
-                    <option value="custom">{{ _('run.limit_custom') }}</option>
-                </select>
+                <span>{{ _('run.limit_custom') }}</span>
+                <input id="run-max-posts" class="input" type="number" min="1" step="1" value="{{ run_settings.custom_limit }}" placeholder="200" {% if run_settings.limit_mode == '0' %}disabled{% endif %}>
+                <small>{{ _('run.max_posts_help') }}</small>
             </label>
-            <label class="form-field hidden" id="custom-limit-field">
-                <span>{{ _('run.max_posts') }}</span>
-                <input id="run-max-posts" class="input" type="number" min="1" step="1" placeholder="200">
-            </label>
+            <div class="form-field">
+                <span>{{ _('run.limit_scope') }}</span>
+                <label class="check-control">
+                    <input id="run-no-limit" type="checkbox" {% if run_settings.limit_mode == '0' %}checked{% endif %}>
+                    <span>{{ _('run.limit_all') }}</span>
+                </label>
+                <small>{{ _('run.limit_all_help') }}</small>
+            </div>
             <label class="form-field">
                 <span>{{ _('common.start_date') }}</span>
                 <input id="run-start" class="input" type="date" value="{{ study_period.start }}">
@@ -124,9 +125,9 @@
         <details class="advanced-block">
             <summary>{{ _('common.advanced') }}</summary>
             <div class="options-row">
-                <label><input id="run-download-media" type="checkbox" checked> {{ _('run.download_media') }}</label>
-                <label><input id="run-take-screenshots" type="checkbox" checked> {{ _('run.take_screenshots') }}</label>
-                <label><input id="run-export-after" type="checkbox" checked> {{ _('run.export_after') }}</label>
+                <label><input id="run-download-media" type="checkbox" {% if run_settings.download_media %}checked{% endif %}> {{ _('run.download_media') }}</label>
+                <label><input id="run-take-screenshots" type="checkbox" {% if run_settings.take_screenshots %}checked{% endif %}> {{ _('run.take_screenshots') }}</label>
+                <label><input id="run-export-after" type="checkbox" {% if run_settings.export_after %}checked{% endif %}> {{ _('run.export_after') }}</label>
             </div>
         </details>
 
