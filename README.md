@@ -454,7 +454,7 @@ If you use this tool in academic work, please cite it using the metadata in
   author       = {Quian, Alberto},
   title        = {Instagram \& TikTok Scraper},
   year         = {2026},
-  version      = {2.0.0},
+  version      = {2.0.1},
   institution  = {Universidade de Santiago de Compostela},
   url          = {https://github.com/AlbertoQuian/instagram-tiktok-scraper},
   doi          = {10.5281/zenodo.19054042},
@@ -464,7 +464,7 @@ If you use this tool in academic work, please cite it using the metadata in
 
 Or in APA style:
 
-> Quian, A. (2026). *Instagram & TikTok Scraper* (v2.0.0) [Computer software].
+> Quian, A. (2026). *Instagram & TikTok Scraper* (v2.0.1) [Computer software].
 > Zenodo. <https://doi.org/10.5281/zenodo.19054042>
 
 ## License
