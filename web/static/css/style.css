@@ -205,6 +205,61 @@ a:hover {
     margin-bottom: 24px;
 }
 
+.guide-panel {
+    margin-bottom: 18px;
+}
+
+.guide-list {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: guide-step;
+}
+
+.guide-list li {
+    position: relative;
+    min-height: 122px;
+    padding: 14px 14px 14px 48px;
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    background: #fbfcfd;
+}
+
+.guide-list li::before {
+    counter-increment: guide-step;
+    content: counter(guide-step);
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    background: #eaf0fb;
+    color: var(--primary);
+    font-weight: 800;
+    font-size: 0.82rem;
+}
+
+.guide-list strong,
+.guide-list span {
+    display: block;
+}
+
+.guide-list strong {
+    margin-bottom: 5px;
+}
+
+.guide-list span {
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
 .stat-card {
     min-height: 92px;
     padding: 16px;
@@ -604,6 +659,26 @@ textarea.input {
     margin: 0;
 }
 
+.access-panel {
+    margin-bottom: 18px;
+    box-shadow: none;
+}
+
+.access-panel h2 {
+    margin: 0 0 12px;
+    font-size: 1.05rem;
+}
+
+.access-list {
+    display: grid;
+    gap: 8px;
+}
+
+.access-list p {
+    margin: 0;
+    color: var(--muted);
+}
+
 .secret-input {
     -webkit-text-security: disc;
 }
@@ -782,6 +857,10 @@ textarea.input {
         grid-template-columns: 1fr;
     }
 
+    .guide-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .filter-button {
         justify-self: start;
     }
@@ -842,7 +921,8 @@ textarea.input {
 
     .form-grid,
     .settings-grid,
-    .account-row {
+    .account-row,
+    .guide-list {
         grid-template-columns: 1fr;
     }
 
