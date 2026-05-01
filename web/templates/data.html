@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}{{ _('data.title') }} - {{ project_name }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <h1>{{ _('data.title') }}</h1>
+        <p>{{ _('data.subtitle', count=total_posts) }}</p>
+    </div>
+</section>
+
+<section class="panel filter-panel">
+    <div class="panel-header">
+        <h2>{{ _('data.filters') }}</h2>
+        <span class="muted">{{ _('data.rows_shown', shown=posts|length, total=total_posts) }}</span>
+    </div>
+    <div class="filter-grid">
+        <label class="form-field">
+            <span>{{ _('common.platform') }}</span>
+            <select id="filter-platform" class="input">
+                <option value="all" {% if current_platform == 'all' %}selected{% endif %}>{{ _('common.all') }}</option>
+                {% for platform in platforms %}
+                <option value="{{ platform }}" {% if current_platform == platform %}selected{% endif %}>{{ platform }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="form-field">
+            <span>{{ _('common.category') }}</span>
+            <select id="filter-category" class="input">
+                <option value="all" {% if current_category == 'all' %}selected{% endif %}>{{ _('common.all') }}</option>
+                {% for category in categories %}
+                <option value="{{ category }}" {% if current_category == category %}selected{% endif %}>{{ category }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="form-field">
+            <span>{{ _('common.account') }}</span>
+            <select id="filter-account" class="input">
+                <option value="all" {% if current_account == 'all' %}selected{% endif %}>{{ _('common.all') }}</option>
+                {% for account in accounts %}
+                <option value="{{ account }}" {% if current_account == account %}selected{% endif %}>{{ account }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <button type="button" class="btn primary filter-button" onclick="applyDataFilters()">{{ _('data.apply') }}</button>
+    </div>
+</section>
+
+<section class="table-shell">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>{{ _('common.platform') }}</th>
+                <th>{{ _('common.category') }}</th>
+                <th>{{ _('common.account') }}</th>
+                <th>{{ _('common.post') }}</th>
+                <th>{{ _('common.start_date') }}</th>
+                <th>{{ _('common.caption') }}</th>
+                <th>{{ _('common.likes') }}</th>
+                <th>{{ _('common.views') }}</th>
+                <th>{{ _('common.format') }}</th>
+                <th>{{ _('data.language') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for post in posts %}
+            <tr>
+                <td><span class="badge platform-{{ post.platform|lower }}">{{ post.platform }}</span></td>
+                <td>{{ post._category or '-' }}</td>
+                <td>{{ post._account or '-' }}</td>
+                <td><a href="{{ url_for('post_detail', post_id=post.post_id) }}">{{ post.post_id or '-' }}</a></td>
+                <td>{{ post.date or '-' }}</td>
+                <td class="truncate" title="{{ post.caption or '' }}">{{ (post.caption or '-') | truncate(90) }}</td>
+                <td>{{ post.likes if post.likes not in [none, ''] else '-' }}</td>
+                <td>{{ post.views if post.views not in [none, ''] else '-' }}</td>
+                <td>{{ post.format or '-' }}</td>
+                <td>{{ post.language or '-' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="10" class="empty-state">{{ _('data.no_posts') }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

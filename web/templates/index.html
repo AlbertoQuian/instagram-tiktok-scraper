@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}{{ _('dashboard.title') }} - {{ project_name }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <h1>{{ _('dashboard.title') }}</h1>
+        <p>{{ _('dashboard.subtitle') }}</p>
+    </div>
+</section>
+
+<section class="stats-grid" aria-label="Statistics">
+    <div class="stat-card"><span>{{ _('stats.total') }}</span><strong>{{ stats.total }}</strong></div>
+    <div class="stat-card"><span>{{ _('stats.instagram') }}</span><strong>{{ stats.instagram }}</strong></div>
+    <div class="stat-card"><span>{{ _('stats.tiktok') }}</span><strong>{{ stats.tiktok }}</strong></div>
+    <div class="stat-card"><span>{{ _('stats.accounts') }}</span><strong>{{ stats.accounts }}</strong></div>
+    <div class="stat-card"><span>{{ _('stats.categories') }}</span><strong>{{ stats.categories }}</strong></div>
+    <div class="stat-card"><span>{{ _('stats.media') }}</span><strong>{{ stats.media }}</strong></div>
+</section>
+
+<section class="content-grid two-columns">
+    <div class="panel run-panel">
+        <div class="panel-header">
+            <div>
+                <h2>{{ _('run.title') }}</h2>
+                <p>{{ _('run.subtitle') }}</p>
+            </div>
+        </div>
+
+        <div class="form-grid">
+            <label class="form-field">
+                <span>{{ _('run.platform') }}</span>
+                <select id="run-platform" class="input">
+                    <option value="all">{{ _('common.all') }}</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="tiktok">TikTok</option>
+                </select>
+            </label>
+            <label class="form-field">
+                <span>{{ _('run.category') }}</span>
+                <select id="run-category" class="input">
+                    <option value="all">{{ _('common.all') }}</option>
+                    {% for category in categories %}
+                    <option value="{{ category }}">{{ category }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="form-field">
+                <span>{{ _('common.start_date') }}</span>
+                <input id="run-start" class="input" type="date" value="{{ study_period.start }}">
+            </label>
+            <label class="form-field">
+                <span>{{ _('common.end_date') }}</span>
+                <input id="run-end" class="input" type="date" value="{{ study_period.end }}">
+            </label>
+            <label class="form-field">
+                <span>{{ _('run.max_posts') }}</span>
+                <input id="run-max-posts" class="input" type="number" min="1" step="1" placeholder="200">
+            </label>
+        </div>
+
+        <div class="account-picker">
+            <div class="field-header">
+                <span>{{ _('run.accounts') }}</span>
+                <div class="button-row compact">
+                    <button type="button" class="btn secondary" onclick="toggleRunAccounts(true)">{{ _('run.select_all') }}</button>
+                    <button type="button" class="btn secondary" onclick="toggleRunAccounts(false)">{{ _('run.select_none') }}</button>
+                </div>
+            </div>
+            <div class="account-choice-grid">
+                {% for account in accounts %}
+                <label class="account-choice">
+                    <input type="checkbox" class="run-account" checked data-instagram="{{ account.instagram }}" data-tiktok="{{ account.tiktok }}">
+                    <span>
+                        <strong>{{ account.account_name }}</strong>
+                        <small>{{ account.category or _('common.optional') }}</small>
+                        <small>{% if account.instagram %}@{{ account.instagram }}{% endif %}{% if account.instagram and account.tiktok %} / {% endif %}{% if account.tiktok %}@{{ account.tiktok }}{% endif %}</small>
+                    </span>
+                </label>
+                {% else %}
+                <div class="empty-state">{{ _('accounts.empty') }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="options-row">
+            <label><input id="run-download-media" type="checkbox" checked> {{ _('run.download_media') }}</label>
+            <label><input id="run-take-screenshots" type="checkbox" checked> {{ _('run.take_screenshots') }}</label>
+            <label><input id="run-export-after" type="checkbox" checked> {{ _('run.export_after') }}</label>
+        </div>
+
+        <div class="button-row">
+            <button type="button" class="btn primary" onclick="launchScrape(this)">{{ _('run.start') }}</button>
+            <button type="button" class="btn secondary" onclick="launchScreenshots(this)">{{ _('run.screenshots_only') }}</button>
+            <button type="button" class="btn secondary" onclick="exportCSV(this)">{{ _('run.export_csv') }}</button>
+            <a class="btn ghost" href="{{ url_for('download_csv') }}">{{ _('run.download_csv') }}</a>
+        </div>
+    </div>
+
+    <div class="status-column">
+        <div class="panel small-panel">
+            <h2>{{ _('cookies.current') }}</h2>
+            <div class="status-list">
+                <div class="status-item {{ instagram_cookie.status }}">
+                    <span>Instagram</span>
+                    <strong>{{ instagram_cookie.message }}</strong>
+                </div>
+                <div class="status-item {{ tiktok_cookie.status }}">
+                    <span>TikTok</span>
+                    <strong>{{ tiktok_cookie.message }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel small-panel" id="task-panel">
+            <h2>{{ _('task.title') }}</h2>
+            <div id="task-status" class="task-status idle">{{ _('task.waiting') }}</div>
+            <div id="task-log" class="task-log"></div>
+        </div>
+    </div>
+</section>
+{% endblock %}

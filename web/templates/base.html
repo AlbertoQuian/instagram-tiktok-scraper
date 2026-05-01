@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ project_name }} - {{ _('app.title') }}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-mark">IT</div>
+            <div>
+                <div class="brand-title">{{ _('app.title') }}</div>
+                <div class="brand-subtitle">{{ project_name }}</div>
+            </div>
+        </div>
+
+        <nav class="nav" aria-label="Main navigation">
+            <div class="nav-label">{{ _('nav.main') }}</div>
+            <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">{{ _('nav.dashboard') }}</a>
+            <a class="nav-link {% if request.endpoint == 'data_view' or request.endpoint == 'post_detail' %}active{% endif %}" href="{{ url_for('data_view') }}">{{ _('nav.data') }}</a>
+            <div class="nav-label">{{ _('nav.config') }}</div>
+            <a class="nav-link {% if request.endpoint == 'accounts_view' %}active{% endif %}" href="{{ url_for('accounts_view') }}">{{ _('nav.accounts') }}</a>
+            <a class="nav-link {% if request.endpoint == 'cookies_view' %}active{% endif %}" href="{{ url_for('cookies_view') }}">{{ _('nav.cookies') }}</a>
+            <a class="nav-link {% if request.endpoint == 'settings_view' %}active{% endif %}" href="{{ url_for('settings_view') }}">{{ _('nav.settings') }}</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="footer-label">{{ _('common.period') }}</div>
+            <div class="footer-value">{{ study_start or '...' }} - {{ study_end or '...' }}</div>
+        </div>
+    </aside>
+
+    <main class="main">
+        <header class="topbar">
+            <div class="project-chip">{{ project_name }}</div>
+            <div class="language-switch" aria-label="{{ _('common.language') }}">
+                {% for code, label in languages.items() %}
+                    <a class="lang-link {% if code == current_lang %}active{% endif %}" href="{{ language_url(code) }}">{{ label }}</a>
+                {% endfor %}
+            </div>
+        </header>
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+<script>
+window.APP_TEXT = {{ js_text | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

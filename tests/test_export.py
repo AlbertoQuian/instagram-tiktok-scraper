@@ -21,7 +21,7 @@ class TestCSVColumns:
     """Verify the canonical column list."""
 
     def test_column_count(self):
-        assert len(CSV_COLUMNS) == 23
+        assert len(CSV_COLUMNS) == 24
 
     def test_first_and_last(self):
         assert CSV_COLUMNS[0] == "category"
@@ -88,7 +88,9 @@ class TestBuildCSVRow:
         row = build_csv_row({}, "tiktok", "cat", tmp_path / "m.json")
         assert row["platform"] == "tiktok"
         assert row["category"] == "cat"
-        assert row["likes"] == 0
+        # Engagement fields default to None when missing (preserves the
+        # distinction between zero-engagement and unknown values).
+        assert row["likes"] is None
         assert row["media_files"] == ""
 
 

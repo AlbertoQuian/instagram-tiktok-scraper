@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ _('cookies.title') }} - {{ project_name }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <h1>{{ _('cookies.title') }}</h1>
+        <p>{{ _('cookies.subtitle') }}</p>
+    </div>
+</section>
+
+<section class="content-grid two-columns">
+    <div class="panel">
+        <div class="panel-header">
+            <h2>{{ _('cookies.instagram') }}</h2>
+            <span class="status-pill {{ instagram_cookie.status }}">{{ instagram_cookie.message }}</span>
+        </div>
+        <label class="form-field">
+            <span>{{ _('cookies.paste_json') }}</span>
+            <textarea id="instagram-cookies" class="input code-input" rows="16">{{ instagram_preview }}</textarea>
+        </label>
+        <div class="button-row form-actions">
+            <button type="button" class="btn primary" onclick="saveInstagramCookies(this)">{{ _('cookies.save_instagram') }}</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <h2>{{ _('cookies.tiktok') }}</h2>
+            <span class="status-pill {{ tiktok_cookie.status }}">{{ tiktok_cookie.message }}</span>
+        </div>
+        <label class="form-field">
+            <span>{{ _('cookies.paste_text') }}</span>
+            <textarea id="tiktok-cookies" class="input code-input" rows="16">{{ tiktok_preview }}</textarea>
+        </label>
+        <div class="button-row form-actions">
+            <button type="button" class="btn primary" onclick="saveTikTokCookies(this)">{{ _('cookies.save_tiktok') }}</button>
+        </div>
+    </div>
+</section>
+{% endblock %}

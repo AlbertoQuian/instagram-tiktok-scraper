@@ -3,6 +3,7 @@ data/
 
 # Python
 __pycache__/
+.pytest_cache/
 *.pyc
 *.pyo
 *.egg-info/
@@ -14,6 +15,7 @@ build/
 venv/
 .venv/
 env/
+test_run/
 
 # Credentials & cookies
 config/instagram_cookies.json
@@ -23,6 +25,7 @@ config/accounts.json
 # IDE
 .vscode/
 .idea/
+*.code-workspace
 *.swp
 *.swo
 

@@ -14,7 +14,9 @@ import json
 import logging
 import os
 import re
+import shutil
 import subprocess
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -243,6 +245,10 @@ class InstagramPlaywrightScraper:
             # ── Reconstruct photo carousels as MP4 slideshows ────────
             if self.download_media:
                 self._reconstruct_ig_carousels(posts, media_dir)
+
+            # ── Repair silent MP4s (DASH-only video streams) ─────────
+            if self.download_media:
+                self._repair_silent_videos(posts, media_dir)
 
             # ── Save metadata BEFORE screenshots (so data is not lost if screenshots fail) ──
             meta_file = profile_dir / f"{username}_metadata.json"
@@ -663,11 +669,11 @@ class InstagramPlaywrightScraper:
         has_carousel = bool(node.get("carousel_media"))
 
         if "Sidecar" in typename or media_type == 8 or has_sidecar or has_carousel:
-            fmt = "Carousel"
+            fmt = "carousel"
         elif is_video or media_type == 2:
-            fmt = "Short-form Video"
+            fmt = "video"
         else:
-            fmt = "Image"
+            fmt = "image"
 
         # Thumbnail
         thumb = node.get("thumbnail_src", "") or node.get("display_url", "")
@@ -675,7 +681,7 @@ class InstagramPlaywrightScraper:
         link = f"/p/{sc}/"
         notes = ""
         if node.get("product_type") == "clips":
-            fmt = "Short-form Video"
+            fmt = "video"
             notes = "reel"
             link = f"/reel/{sc}/"
 
@@ -844,6 +850,126 @@ class InstagramPlaywrightScraper:
             import shutil
             shutil.rmtree(tmpdir, ignore_errors=True)
 
+    # ------------------------------------------------------------------
+    # Silent-video repair (DASH-only video streams without audio)
+    # ------------------------------------------------------------------
+    def _repair_silent_videos(self, posts: list[dict], media_dir: Path) -> None:
+        """Detect MP4s without an audio stream and re-download them with yt-dlp.
+
+        Instagram's private GraphQL endpoint sometimes returns ``video_url``
+        values pointing to a DASH video-only segment (no audio track).  When
+        that happens, the downloaded MP4 is silent.  yt-dlp can fetch the
+        same post with proper format selection (``bv*+ba/b``) and merge the
+        two streams into a playable file with audio.
+        """
+        if not shutil.which("yt-dlp"):
+            return
+
+        for post in posts:
+            post_url = post.get("post_url") or ""
+            if not post_url:
+                continue
+            files = post.get("media_files") or []
+            if isinstance(files, str):
+                files = [files]
+            mp4s = [media_dir / f for f in files if str(f).lower().endswith(".mp4")]
+            silent = [m for m in mp4s if m.exists() and not self._has_audio_stream(m)]
+            if not silent:
+                continue
+
+            logger.info(
+                "Detected %d silent MP4(s) in %s — attempting repair via yt-dlp",
+                len(silent), post_url,
+            )
+
+            # Re-download the post via yt-dlp with proper A/V merging.
+            tmpdir = Path(tempfile.mkdtemp(prefix="ig_repair_"))
+            try:
+                cmd = [
+                    "yt-dlp",
+                    "--no-warnings",
+                    "--quiet",
+                    "-f", "bv*+ba/b",
+                    "--merge-output-format", "mp4",
+                    "-o", str(tmpdir / "%(id)s.%(ext)s"),
+                    post_url,
+                ]
+                # Pass cookies if available — required for Reels/private content
+                if self.cookies_path and Path(self.cookies_path).exists():
+                    # Convert JSON cookies to Netscape format yt-dlp can read
+                    netscape = self._cookies_to_netscape(Path(self.cookies_path), tmpdir)
+                    if netscape:
+                        cmd.extend(["--cookies", str(netscape)])
+                try:
+                    subprocess.run(cmd, capture_output=True, timeout=300, check=False)
+                except Exception as e:
+                    logger.warning("yt-dlp repair failed for %s: %s", post_url, e)
+                    continue
+
+                # Replace each silent file with the freshly downloaded one (if any)
+                rebuilt = sorted(tmpdir.glob("*.mp4"))
+                if not rebuilt:
+                    logger.info(
+                        "yt-dlp could not re-download %s — leaving silent files as-is",
+                        post_url,
+                    )
+                    continue
+                rebuilt_with_audio = [r for r in rebuilt if self._has_audio_stream(r)]
+                if not rebuilt_with_audio:
+                    logger.info(
+                        "Source content of %s appears to have no audio track "
+                        "(originally published muted) — keeping original files",
+                        post_url,
+                    )
+                    continue
+                # Pair silent files with rebuilt-with-audio files in order
+                for i, silent_mp4 in enumerate(silent):
+                    src = rebuilt_with_audio[i] if i < len(rebuilt_with_audio) else rebuilt_with_audio[-1]
+                    try:
+                        shutil.copy2(src, silent_mp4)
+                        logger.info(
+                            "Repaired silent IG video: %s", silent_mp4.name
+                        )
+                    except Exception as e:
+                        logger.warning("Could not replace %s: %s", silent_mp4, e)
+            finally:
+                shutil.rmtree(tmpdir, ignore_errors=True)
+
+    @staticmethod
+    def _has_audio_stream(path: Path) -> bool:
+        try:
+            r = subprocess.run(
+                ["ffprobe", "-v", "error", "-select_streams", "a",
+                 "-show_entries", "stream=codec_type", "-of", "csv=p=0", str(path)],
+                capture_output=True, text=True, timeout=15,
+            )
+            return "audio" in r.stdout
+        except Exception:
+            return True  # be conservative: assume OK if we cannot check
+
+    @staticmethod
+    def _cookies_to_netscape(json_path: Path, out_dir: Path) -> Path | None:
+        """Convert Playwright-style JSON cookies to Netscape format for yt-dlp."""
+        try:
+            cookies = json.loads(json_path.read_text(encoding="utf-8"))
+        except Exception:
+            return None
+        out = out_dir / "cookies.txt"
+        with open(out, "w", encoding="utf-8") as f:
+            f.write("# Netscape HTTP Cookie File\n")
+            for c in cookies:
+                domain = c.get("domain", "")
+                flag = "TRUE" if domain.startswith(".") else "FALSE"
+                path = c.get("path", "/")
+                secure = "TRUE" if c.get("secure") else "FALSE"
+                exp = int(c.get("expires") or c.get("expirationDate") or 0)
+                if exp <= 0:
+                    exp = 2147483647
+                name = c.get("name", "")
+                value = c.get("value", "")
+                f.write(f"{domain}\t{flag}\t{path}\t{secure}\t{exp}\t{name}\t{value}\n")
+        return out
+
     def _download_media_file(
         self, url: str, dest_dir: Path, post_id: str, ext: str = "jpg"
     ) -> Path | None:
@@ -994,6 +1120,7 @@ class InstagramPlaywrightScraper:
         """Scrape all configured Instagram accounts."""
         all_results = {}
         accounts = accounts_config.get("accounts", [])
+        pause = self.settings.get("pause_between_profiles", 5)
 
         for account in accounts:
             acct_category = account.get("category", "")
@@ -1028,7 +1155,7 @@ class InstagramPlaywrightScraper:
                 )
 
             # Pause between profiles
-            time.sleep(5)
+            time.sleep(pause)
 
         return all_results
 
@@ -1046,7 +1173,7 @@ class InstagramPlaywrightScraper:
             )
             # Load cookies if available
             try:
-                cookies_path = Path("config/instagram_cookies.json")
+                cookies_path = Path(self.cookies_path)
                 if cookies_path.exists():
                     with open(cookies_path, "r", encoding="utf-8") as f:
                         raw_cookies = json.load(f)

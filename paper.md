@@ -121,7 +121,7 @@ critical feature for comparative or multilingual studies.
 Instagram & TikTok Scraper addresses this gap by offering a single,
 configuration-driven tool that:
 
-- scrapes both platforms under a unified schema of 23 variables
+- scrapes both platforms under a unified schema of 24 variables
   (\autoref{tab:schema}), with platform-specific fields populated where the
   source API provides them,
 - archives original media files and rendered screenshots for visual content
@@ -148,9 +148,9 @@ data collection tools in computational social science [@freelon2018;
    file declares target accounts with platform handles, user-defined
    categories (e.g., broadsheet, tabloid, digital-native), and the study date
    range. Global settings control download options, screenshot capture,
-   carousel reconstruction, and rate limiting. This declarative approach
-   ensures that study samples are version-controllable and shareable across
-   collaborators.
+   carousel reconstruction, request pacing, and per-profile cool-down
+   intervals. This declarative approach ensures that study samples are
+   version-controllable and shareable across collaborators.
 
 2. **Scrapers** (`scrapers/`): Platform-specific modules implement a common
    interface (`scrape_all_accounts`, `take_screenshots_from_metadata`),
@@ -179,7 +179,7 @@ data collection tools in computational social science [@freelon2018;
    consolidated into a single pandas [@pandas2024] DataFrame, sorted by
    category, account, and date, and exported as a UTF-8 CSV file directly
    importable into R, SPSS, or Python analysis environments.
-   \autoref{tab:schema} lists the 23 output variables and their availability
+   \autoref{tab:schema} lists the 24 output variables and their availability
    per platform.
 
 : Unified CSV schema. IG = Instagram, TT = TikTok. \* TikTok audio metadata is extracted from the platform's own music catalogue; for user-created "original sounds" without a catalogue match, the field contains the literal string `original sound`. \label{tab:schema}
@@ -196,27 +196,30 @@ data collection tools in computational social science [@freelon2018;
 | 8 | `caption` | Full post text | ✓ | ✓ |
 | 9 | `hashtags` | Extracted hashtag list | ✓ | ✓ |
 | 10 | `likes` | Like count | ✓ | ✓ |
-| 11 | `comments` | Comment count | ✓ | ✓ |
-| 12 | `views` | View count | video | ✓ |
-| 13 | `shares` | Share/repost count | — | ✓ |
-| 14 | `fb_likes` | Facebook cross-post likes | ✓ | — |
-| 15 | `format` | Media type (image/video/carousel) | ✓ | ✓ |
-| 16 | `duration` | Video duration (seconds) | — | ✓ |
-| 17 | `music_title` | Audio track name\* | — | ✓ |
-| 18 | `music_author` | Audio track artist\* | — | ✓ |
-| 19 | `media_files` | Downloaded media file paths | ✓ | ✓ |
-| 20 | `thumbnail` | Thumbnail file path | ✓ | ✓ |
-| 21 | `metadata_file` | JSON metadata file path | ✓ | ✓ |
-| 22 | `language` | Detected language (ISO 639-1) | ✓ | ✓ |
-| 23 | `notes` | Scraper annotations | ✓ | ✓ |
+| 11 | `likes_hidden` | Whether like counts are hidden by the user | ✓ | — |
+| 12 | `comments` | Comment count | ✓ | ✓ |
+| 13 | `views` | View count | video | ✓ |
+| 14 | `shares` | Share/repost count | — | ✓ |
+| 15 | `fb_likes` | Facebook cross-post likes | ✓ | — |
+| 16 | `format` | Media type (image/video/carousel) | ✓ | ✓ |
+| 17 | `duration` | Video duration (seconds) | — | ✓ |
+| 18 | `music_title` | Audio track name\* | — | ✓ |
+| 19 | `music_author` | Audio track artist\* | — | ✓ |
+| 20 | `media_files` | Downloaded media file paths | ✓ | ✓ |
+| 21 | `thumbnail` | Thumbnail file path | ✓ | ✓ |
+| 22 | `metadata_file` | JSON metadata file path | ✓ | ✓ |
+| 23 | `language` | Detected language (ISO 639-1) | ✓ | ✓ |
+| 24 | `notes` | Scraper annotations | ✓ | ✓ |
 
 5. **CLI** (`main.py`): A standard argparse interface supports platform
-   selection, category filtering, date-range overrides, export triggering, and
-   a screenshots-only mode for re-capturing visuals from existing metadata.
-   Researchers can thus collect data incrementally or re-export consolidated
-   datasets without re-scraping.
+   selection, category filtering, date-range overrides, per-profile post
+   limits (`--max-posts`), opt-out flags for media downloads
+   (`--no-media`), screenshots (`--no-screenshots`) and CSV export
+   (`--no-export`), and a screenshots-only mode for re-capturing visuals from
+   existing metadata. Researchers can thus collect data incrementally or
+   re-export consolidated datasets without re-scraping.
 
-![Software architecture diagram.\label{fig:arch}](architecture.png)
+![Software architecture diagram.\label{fig:arch}](architecture.png){width=70%}
 
 # Research Applications
 

@@ -61,10 +61,16 @@ class TestSettingsConstants:
         assert "output_dir" in settings.EXPORT_SETTINGS
         assert "filename" in settings.EXPORT_SETTINGS
 
-    def test_rate_limit_keys(self):
-        assert "instagram" in settings.RATE_LIMIT
-        assert "tiktok" in settings.RATE_LIMIT
-        assert all(isinstance(v, (int, float)) for v in settings.RATE_LIMIT.values())
+    def test_per_platform_pause(self):
+        assert "pause_between_profiles" in settings.INSTAGRAM_SETTINGS
+        assert "pause_between_profiles" in settings.TIKTOK_SETTINGS
+        assert isinstance(settings.INSTAGRAM_SETTINGS["pause_between_profiles"], (int, float))
+        assert isinstance(settings.TIKTOK_SETTINGS["pause_between_profiles"], (int, float))
+
+    def test_max_posts_setting(self):
+        assert isinstance(settings.MAX_POSTS_PER_PROFILE, int)
+        assert settings.INSTAGRAM_SETTINGS["max_posts_per_profile"] >= 1
+        assert settings.TIKTOK_SETTINGS["max_posts_per_profile"] >= 1
 
     def test_paths_are_path_objects(self):
         assert isinstance(settings.BASE_DIR, Path)

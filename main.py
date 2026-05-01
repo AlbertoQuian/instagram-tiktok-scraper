@@ -20,7 +20,6 @@ from config.settings import (
     EXPORT_SETTINGS,
     INSTAGRAM_SETTINGS,
     RAW_DIR,
-    RATE_LIMIT,
     TIKTOK_SETTINGS,
     get_study_period,
 )
@@ -83,6 +82,27 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Override study period end date (YYYY-MM-DD)",
     )
+    parser.add_argument(
+        "--max-posts",
+        type=int,
+        default=None,
+        help="Maximum posts per profile (overrides settings)",
+    )
+    parser.add_argument(
+        "--no-media",
+        action="store_true",
+        help="Skip downloading media files (videos/images)",
+    )
+    parser.add_argument(
+        "--no-screenshots",
+        action="store_true",
+        help="Skip taking post screenshots",
+    )
+    parser.add_argument(
+        "--no-export",
+        action="store_true",
+        help="Skip the consolidated CSV export at the end",
+    )
     return parser.parse_args()
 
 
@@ -92,6 +112,7 @@ def run_scraping(
     start_date: str,
     end_date: str,
     category: str | None = None,
+    max_posts: int | None = None,
 ) -> None:
     """Run the scraping pipeline for the selected platform(s)."""
     if platform in ("instagram", "all"):
@@ -107,6 +128,7 @@ def run_scraping(
             start_date=start_date,
             end_date=end_date,
             category=category,
+            max_posts=max_posts or INSTAGRAM_SETTINGS.get("max_posts_per_profile", 200),
         )
 
     if platform in ("tiktok", "all"):
@@ -122,6 +144,7 @@ def run_scraping(
             start_date=start_date,
             end_date=end_date,
             category=category,
+            max_posts=max_posts,
         )
 
 
@@ -137,6 +160,14 @@ def main() -> None:
 
     # Filter by category
     category = args.category or None
+
+    # Apply runtime overrides to settings
+    if args.no_media:
+        INSTAGRAM_SETTINGS["download_videos"] = False
+        TIKTOK_SETTINGS["download_videos"] = False
+    if args.no_screenshots:
+        INSTAGRAM_SETTINGS["take_screenshots"] = False
+        TIKTOK_SETTINGS["take_screenshots"] = False
 
     # Filter specific accounts via environment variable
     env_filter = os.environ.get("SCRAPE_ACCOUNTS")
@@ -166,16 +197,20 @@ def main() -> None:
         return
 
     # Run scraping
-    run_scraping(accounts_config, args.platform, start_date, end_date, category)
-
-    # Export CSV (always automatic after scraping)
-    logger.info("Exporting consolidated CSV...")
-    export_to_csv(
-        raw_dir=RAW_DIR,
-        output_dir=EXPORT_SETTINGS["output_dir"],
-        filename=EXPORT_SETTINGS["filename"],
+    run_scraping(
+        accounts_config, args.platform, start_date, end_date,
+        category=category, max_posts=args.max_posts,
     )
-    logger.info("Export complete.")
+
+    # Export consolidated CSV (unless explicitly skipped)
+    if not args.no_export:
+        logger.info("Exporting consolidated CSV...")
+        export_to_csv(
+            raw_dir=RAW_DIR,
+            output_dir=EXPORT_SETTINGS["output_dir"],
+            filename=EXPORT_SETTINGS["filename"],
+        )
+        logger.info("Export complete.")
 
 
 if __name__ == "__main__":

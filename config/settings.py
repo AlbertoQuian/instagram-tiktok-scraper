@@ -34,11 +34,17 @@ def get_study_period() -> tuple[str, str]:
     return period.get("start", "2024-01-01"), period.get("end", "2024-12-31")
 
 
+# Default maximum number of posts fetched per profile
+MAX_POSTS_PER_PROFILE = 200
+
 # ── Instagram settings ────────────────────────────────────────────────
 INSTAGRAM_SETTINGS = {
     "download_videos": True,
     "take_screenshots": True,
     "cookies_path": BASE_DIR / "config" / "instagram_cookies.json",
+    "max_posts_per_profile": MAX_POSTS_PER_PROFILE,
+    # Seconds between profiles (anti-rate-limit)
+    "pause_between_profiles": 5,
 }
 
 # ── TikTok settings ──────────────────────────────────────────────────
@@ -46,16 +52,17 @@ TIKTOK_SETTINGS = {
     "download_videos": True,
     "take_screenshots": True,
     "reconstruct_carousels": True,
+    "cookies_path": BASE_DIR / "config" / "tiktok_cookies.txt",
+    "max_posts_per_profile": MAX_POSTS_PER_PROFILE,
+    # yt-dlp inter-request sleep range (seconds)
+    "sleep_interval": 3,
+    "max_sleep_interval": 6,
+    # Seconds between profiles
+    "pause_between_profiles": 3,
 }
 
 # ── CSV export settings ──────────────────────────────────────────────
 EXPORT_SETTINGS = {
     "output_dir": DATA_DIR / "exports",
     "filename": "dataset.csv",
-}
-
-# ── Rate limiting (seconds between requests) ─────────────────────────
-RATE_LIMIT = {
-    "instagram": 3,
-    "tiktok": 2,
 }

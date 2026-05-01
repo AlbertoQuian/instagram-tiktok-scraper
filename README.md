@@ -41,6 +41,7 @@ date range.
   - Carousel reconstruction (images → MP4 slideshow via ffmpeg)
   - Embed screenshots (JPG)
 - **Unified CSV export** consolidating data from both platforms
+- **Browser-based GUI** for non-technical workflows, available in Spanish and English
 - **Automatic language detection** via lingua-py (ISO 639-1 codes)
 - **Configurable** account list with optional category grouping
 - **Rate limiting** and retry logic with exponential back-off
@@ -192,6 +193,31 @@ The file must be a JSON array of cookie objects. Example structure:
 
 ## Usage
 
+### Web Interface
+
+Start the local GUI:
+
+```bash
+python run_web.py
+```
+
+Then open <http://127.0.0.1:5000>. The interface lets you edit accounts,
+switch between Spanish and English, manage cookies, launch scraping jobs,
+monitor logs, browse collected data, and export the consolidated CSV.
+
+For a double-click launcher, use `launch_gui.command` on macOS/Linux or
+`launch_gui.bat` on Windows. These launchers create the virtual environment
+if needed, install dependencies, install Playwright Chromium, start the GUI,
+and open the browser automatically.
+
+You can also launch it with:
+
+```bash
+python -m web
+```
+
+### Command Line
+
 ```bash
 # Scrape all configured accounts on both platforms
 python main.py
@@ -205,8 +231,17 @@ python main.py --platform tiktok --category spain
 # Override the study period
 python main.py --start-date 2024-03-01 --end-date 2024-06-30
 
-# Scrape and export a consolidated CSV
-python main.py --export
+# Limit the number of posts per profile
+python main.py --max-posts 50
+
+# Skip media downloads (collect metadata only)
+python main.py --no-media
+
+# Skip screenshots (faster runs)
+python main.py --no-screenshots
+
+# Skip the final CSV export (data still saved as JSON)
+python main.py --no-export
 
 # Generate screenshots from existing metadata (no scraping)
 python main.py --screenshots-only
@@ -219,10 +254,16 @@ SCRAPE_ACCOUNTS="handle1,handle2" python main.py
 |---|---|
 | `--platform` | `instagram`, `tiktok`, or `all` (default: `all`) |
 | `--category` | Scrape only accounts matching a category label |
-| `--export` | Export a consolidated CSV after scraping |
-| `--screenshots-only` | Generate screenshots from existing metadata without scraping |
 | `--start-date` | Override the study period start date (`YYYY-MM-DD`) |
 | `--end-date` | Override the study period end date (`YYYY-MM-DD`) |
+| `--max-posts` | Maximum posts per profile (overrides `MAX_POSTS_PER_PROFILE` in `settings.py`) |
+| `--no-media` | Skip downloading media files |
+| `--no-screenshots` | Skip taking post screenshots |
+| `--no-export` | Skip the consolidated CSV export at the end |
+| `--screenshots-only` | Generate screenshots from existing metadata without scraping |
+
+A consolidated CSV is exported automatically after every run unless
+`--no-export` is supplied.
 
 **Environment variable:** `SCRAPE_ACCOUNTS` — comma-separated list of handles
 to restrict scraping to specific accounts.
@@ -231,6 +272,9 @@ to restrict scraping to specific accounts.
 
 ```
 ├── main.py                      # CLI entry point
+├── run_web.py                   # Local web interface launcher
+├── launch_gui.command           # Double-click launcher for macOS/Linux
+├── launch_gui.bat               # Double-click launcher for Windows
 ├── config/
 │   ├── settings.py              # Global paths and config loader
 │   ├── accounts.json            # Your account configuration (git-ignored)
@@ -242,6 +286,7 @@ to restrict scraping to specific accounts.
 ├── utils/
 │   ├── export.py                # CSV export utility
 │   └── language.py              # Language detection (lingua-py)
+├── web/                         # Flask GUI, templates, static assets, i18n
 ├── data/                        # All scraped data (git-ignored)
 │   ├── raw/
 │   │   ├── instagram/
@@ -282,7 +327,8 @@ and download paths.
 
 ### Consolidated CSV
 
-The `--export` flag generates a unified CSV with the following columns:
+A unified CSV is generated automatically after every run (skip with
+`--no-export`). It contains the following columns:
 
 | Column | Description |
 |---|---|
@@ -320,6 +366,7 @@ The `--export` flag generates a unified CSV with the following columns:
 | Language detection | [lingua-py](https://github.com/pemistahl/lingua-py) |
 | HTTP client | [httpx](https://github.com/encode/httpx) |
 | Data export | [pandas](https://pandas.pydata.org/) |
+| Web interface | [Flask](https://flask.palletsprojects.com/) |
 | Runtime | Python 3.9+ |
 
 ## Testing

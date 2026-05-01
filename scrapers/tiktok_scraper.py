@@ -38,6 +38,12 @@ class TikTokScraper:
         self.download_videos = settings.get("download_videos", True)
         self.take_screenshots = settings.get("take_screenshots", True)
         self.max_posts = settings.get("max_posts_per_profile", 200)
+        self.sleep_interval = int(settings.get("sleep_interval", 3))
+        self.max_sleep_interval = int(settings.get("max_sleep_interval", 6))
+        self.pause_between_profiles = settings.get("pause_between_profiles", 3)
+        # Resolve cookies path (settings or repo default); only used if it exists
+        cp = settings.get("cookies_path")
+        self.cookies_path = Path(cp) if cp else None
 
     # ------------------------------------------------------------------
     # Public API
@@ -80,19 +86,26 @@ class TikTokScraper:
         output_template = str(media_dir / "%(id)s.%(ext)s")
 
         # ── yt-dlp real download (or metadata-only with --skip-download) ─
+        # Format selection: prefer a single file with both audio+video; if only
+        # split streams are available (TikTok's bytevc1/HEVC), download the
+        # best video + best audio and let yt-dlp/ffmpeg merge them into MP4.
+        # Without this, TikTok sometimes serves a HEVC video stream with no
+        # embedded audio, producing silent files.
         cmd = [
             "yt-dlp",
             "--no-warnings",
             "--impersonate", "Chrome-136:Macos-15",
             "-o", output_template,
+            "--format", "b[acodec!=none][vcodec!=none]/bv*+ba/b",
+            "--merge-output-format", "mp4",
             "--write-info-json",
             "--write-thumbnail",
             "--convert-thumbnails", "jpg",
             "--no-overwrites",
             "--dateafter", start_date.replace("-", ""),
             "--datebefore", end_date.replace("-", ""),
-            "--sleep-interval", "3",
-            "--max-sleep-interval", "6",
+            "--sleep-interval", str(self.sleep_interval),
+            "--max-sleep-interval", str(self.max_sleep_interval),
             "--playlist-items", f"1-{max_posts}",
             url,
         ]
@@ -100,12 +113,9 @@ class TikTokScraper:
         if not self.download_videos:
             cmd.append("--skip-download")
 
-        # Cookies support
-        cookie_path = self.settings.get("cookies_path")
-        if cookie_path and Path(cookie_path).exists():
-            cmd.extend(["--cookies", str(cookie_path)])
-        elif Path("config/tiktok_cookies.txt").exists():
-            cmd.extend(["--cookies", "config/tiktok_cookies.txt"])
+        # Cookies support (only if file actually exists)
+        if self.cookies_path and self.cookies_path.exists():
+            cmd.extend(["--cookies", str(self.cookies_path)])
 
         try:
             result = subprocess.run(
@@ -185,6 +195,16 @@ class TikTokScraper:
 
         logger.info("Found %d posts in study period for @%s", len(posts), username)
 
+        # Save metadata BEFORE carousels/screenshots so data is not lost
+        # if a downstream step (e.g. Playwright) crashes.
+        meta_file = profile_dir / f"{username}_metadata.json"
+
+        def _save_metadata():
+            with open(meta_file, "w", encoding="utf-8") as f:
+                json.dump(posts, f, ensure_ascii=False, indent=2)
+
+        _save_metadata()
+
         # Reconstruct carousels as MP4 slideshows
         self._reconstruct_carousels(posts, media_dir)
 
@@ -198,14 +218,15 @@ class TikTokScraper:
                         post["media_files"] = [vf.name]
                         break
 
+        # Persist again after carousels (media_files updates)
+        _save_metadata()
+
         # Screenshots
         if self.take_screenshots and posts:
             self._take_screenshots(posts, screenshots_dir)
 
-        # Save metadata
-        meta_file = profile_dir / f"{username}_metadata.json"
-        with open(meta_file, "w", encoding="utf-8") as f:
-            json.dump(posts, f, ensure_ascii=False, indent=2)
+        # Final save (in case screenshots add anything)
+        _save_metadata()
 
         logger.info(
             "TikTok @%s complete: %d posts saved (%s)",
@@ -255,9 +276,9 @@ class TikTokScraper:
         shares = entry.get("repost_count", 0) or entry.get("share_count", 0) or 0
 
         # Format detection: carousel vs video
-        fmt = "Video"
+        fmt = "video"
         if entry.get("imagePost") or (not entry.get("formats") and entry.get("duration", 0) == 0):
-            fmt = "Carousel"
+            fmt = "carousel"
 
         # Duration
         duration = entry.get("duration", 0) or 0
@@ -412,7 +433,7 @@ class TikTokScraper:
                                         output_mp4.name,
                                         output_mp4.stat().st_size / 1024 / 1024)
                             post["media_files"] = [output_mp4.name]
-                            post["format"] = "Carousel"
+                            post["format"] = "carousel"
                             post["notes"] = f"carousel_reconstructed ({len(slide_paths)} slides)"
                             # Remove loose .m4a since it's embedded in the mp4
                             if m4a_path.exists():
@@ -444,8 +465,6 @@ class TikTokScraper:
         cookie_path = self.settings.get("cookies_path")
         if cookie_path and Path(cookie_path).exists():
             cmd.extend(["--cookies", str(cookie_path)])
-        elif Path("config/tiktok_cookies.txt").exists():
-            cmd.extend(["--cookies", "config/tiktok_cookies.txt"])
 
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
@@ -680,7 +699,7 @@ class TikTokScraper:
                 )
 
             # Pause between profiles
-            time.sleep(3)
+            time.sleep(self.pause_between_profiles)
 
         return all_results
 
@@ -864,7 +883,7 @@ class TikTokScraper:
             "comments": comments,
             "views": views,
             "shares": shares,
-            "format": "Video",
+            "format": "video",
             "duration": duration,
             "thumbnail": data.get("video", {}).get("cover", ""),
             "media_files": [],

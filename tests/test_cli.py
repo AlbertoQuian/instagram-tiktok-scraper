@@ -20,10 +20,13 @@ class TestParseArgs:
             args = parse_args()
         assert args.platform == "all"
         assert args.category is None
-        assert args.export is False
+        assert args.no_export is False
         assert args.screenshots_only is False
         assert args.start_date is None
         assert args.end_date is None
+        assert args.max_posts is None
+        assert args.no_media is False
+        assert args.no_screenshots is False
 
     def test_platform_flag(self):
         with patch("sys.argv", ["main.py", "--platform", "tiktok"]):
@@ -35,10 +38,25 @@ class TestParseArgs:
             args = parse_args()
         assert args.category == "news"
 
-    def test_export_flag(self):
-        with patch("sys.argv", ["main.py", "--export"]):
+    def test_no_export_flag(self):
+        with patch("sys.argv", ["main.py", "--no-export"]):
             args = parse_args()
-        assert args.export is True
+        assert args.no_export is True
+
+    def test_no_media_flag(self):
+        with patch("sys.argv", ["main.py", "--no-media"]):
+            args = parse_args()
+        assert args.no_media is True
+
+    def test_no_screenshots_flag(self):
+        with patch("sys.argv", ["main.py", "--no-screenshots"]):
+            args = parse_args()
+        assert args.no_screenshots is True
+
+    def test_max_posts_flag(self):
+        with patch("sys.argv", ["main.py", "--max-posts", "50"]):
+            args = parse_args()
+        assert args.max_posts == 50
 
     def test_screenshots_only_flag(self):
         with patch("sys.argv", ["main.py", "--screenshots-only"]):

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ _('post.title') }} - {{ project_name }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <h1>{{ _('post.title') }}</h1>
+        <p>{{ post.post_id }}</p>
+    </div>
+    {% if post.post_url %}
+    <a class="btn secondary" href="{{ post.post_url }}" target="_blank" rel="noopener">{{ _('common.open') }}</a>
+    {% endif %}
+</section>
+
+<section class="content-grid two-columns">
+    <div class="panel">
+        <div class="panel-header"><h2>{{ _('post.metadata') }}</h2></div>
+        <dl class="detail-list">
+            <dt>{{ _('common.platform') }}</dt><dd>{{ post.platform or '-' }}</dd>
+            <dt>{{ _('common.category') }}</dt><dd>{{ post._category or '-' }}</dd>
+            <dt>{{ _('common.account') }}</dt><dd>{{ post._account or '-' }}</dd>
+            <dt>{{ _('common.start_date') }}</dt><dd>{{ post.date or '-' }}</dd>
+            <dt>{{ _('common.likes') }}</dt><dd>{{ post.likes if post.likes not in [none, ''] else '-' }}</dd>
+            <dt>{{ _('common.views') }}</dt><dd>{{ post.views if post.views not in [none, ''] else '-' }}</dd>
+            <dt>{{ _('common.comments') }}</dt><dd>{{ post.comments if post.comments not in [none, ''] else '-' }}</dd>
+            <dt>{{ _('common.format') }}</dt><dd>{{ post.format or '-' }}</dd>
+            <dt>{{ _('common.caption') }}</dt><dd>{{ post.caption or '-' }}</dd>
+        </dl>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header"><h2>{{ _('post.media') }}</h2></div>
+        <div class="media-grid">
+            {% for item in media_items %}
+                {% if item.type == 'video' %}
+                <video controls preload="metadata" src="{{ url_for('serve_media', filepath=item.path) }}"></video>
+                {% else %}
+                <img src="{{ url_for('serve_media', filepath=item.path) }}" alt="{{ item.name }}">
+                {% endif %}
+            {% else %}
+            <div class="empty-state">{{ _('post.no_media') }}</div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

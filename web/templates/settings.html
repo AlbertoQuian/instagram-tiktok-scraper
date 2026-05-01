@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ _('settings.title') }} - {{ project_name }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <h1>{{ _('settings.title') }}</h1>
+        <p>{{ _('settings.subtitle') }}</p>
+    </div>
+</section>
+
+<section class="panel settings-panel">
+    <div class="panel-header">
+        <h2>{{ _('settings.project_name') }}</h2>
+    </div>
+    <div class="form-grid settings-grid">
+        <label class="form-field wide">
+            <span>{{ _('settings.project_name') }}</span>
+            <input id="settings-project" class="input" type="text" value="{{ project_name_value }}">
+        </label>
+        <label class="form-field">
+            <span>{{ _('common.start_date') }}</span>
+            <input id="settings-start" class="input" type="date" value="{{ study_period.start }}">
+        </label>
+        <label class="form-field">
+            <span>{{ _('common.end_date') }}</span>
+            <input id="settings-end" class="input" type="date" value="{{ study_period.end }}">
+        </label>
+    </div>
+    <div class="button-row form-actions">
+        <button type="button" class="btn primary" onclick="saveProjectSettings(this)">{{ _('settings.save') }}</button>
+    </div>
+</section>
+{% endblock %}
