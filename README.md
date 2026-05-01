@@ -130,6 +130,9 @@ Then edit `config/accounts.json` with your target accounts:
         "start": "",
         "end": ""
     },
+    "storage": {
+      "data_dir": ""
+    },
     "accounts": [
         {
             "account_name": "Optional display name",
@@ -146,6 +149,10 @@ figure, etc.) that may have profiles on one or both platforms. The `category`
 field is an optional free label; it can represent a country, topic, campaign,
 client, course, experiment, or any grouping you need. When present, data is
 stored in a subdirectory named after the label.
+
+The optional `storage.data_dir` field controls where scraped metadata, media,
+screenshots, and CSV files are saved. Leave it blank to use the repository's
+git-ignored `data/` directory. In the GUI, this is configured from **Settings**.
 
 ### Instagram Session Cookies
 
@@ -212,10 +219,11 @@ Start the local GUI:
 python run_web.py
 ```
 
-Then open <http://127.0.0.1:5000>. The interface starts blank: add accounts by
+Then open <http://127.0.0.1:5000>. The interface starts blank: add profiles by
 pasting URLs or handles, switch between Spanish and English, connect sessions
-when needed, launch scraping jobs, monitor logs, browse collected data, reset
-the local setup, and export the consolidated CSV.
+when needed, choose where local results are saved, launch scraping jobs,
+monitor logs, browse collected data, reset the local setup, and export the
+consolidated CSV.
 
 For a double-click launcher, use `launch_gui.command` on macOS/Linux or
 `launch_gui.bat` on Windows. These launchers create the virtual environment

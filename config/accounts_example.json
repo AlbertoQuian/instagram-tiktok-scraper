@@ -4,5 +4,8 @@
         "start": "",
         "end": ""
     },
+    "storage": {
+        "data_dir": ""
+    },
     "accounts": []
 }

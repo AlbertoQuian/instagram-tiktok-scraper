@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from main import parse_args
+from main import configured_data_dir, parse_args
 
 
 class TestParseArgs:
@@ -133,3 +133,14 @@ class TestScrapeAccountsFilter:
             if a.get("instagram", "") in allowed or a.get("tiktok", "") in allowed
         ]
         assert len(filtered) == 2
+
+
+class TestConfiguredDataDir:
+    def test_uses_storage_data_dir(self, tmp_path):
+        data_dir = tmp_path / "chosen-folder"
+        config = {"storage": {"data_dir": str(data_dir)}}
+        assert configured_data_dir(config) == data_dir.resolve()
+
+    def test_ignores_missing_storage(self, monkeypatch):
+        monkeypatch.delenv("SCRAPER_DATA_DIR", raising=False)
+        assert configured_data_dir({}).name == "data"

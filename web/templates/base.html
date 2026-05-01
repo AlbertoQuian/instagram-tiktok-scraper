@@ -20,12 +20,12 @@
         <nav class="nav" aria-label="Main navigation">
             <div class="nav-label">{{ _('nav.main') }}</div>
             <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">{{ _('nav.dashboard') }}</a>
-            <a class="nav-link {% if request.endpoint == 'guide_view' %}active{% endif %}" href="{{ url_for('guide_view') }}">{{ _('nav.guide') }}</a>
             <a class="nav-link {% if request.endpoint == 'data_view' or request.endpoint == 'post_detail' %}active{% endif %}" href="{{ url_for('data_view') }}">{{ _('nav.data') }}</a>
             <div class="nav-label">{{ _('nav.config') }}</div>
             <a class="nav-link {% if request.endpoint == 'accounts_view' %}active{% endif %}" href="{{ url_for('accounts_view') }}">{{ _('nav.accounts') }}</a>
             <a class="nav-link {% if request.endpoint == 'cookies_view' %}active{% endif %}" href="{{ url_for('cookies_view') }}">{{ _('nav.cookies') }}</a>
             <a class="nav-link {% if request.endpoint == 'settings_view' %}active{% endif %}" href="{{ url_for('settings_view') }}">{{ _('nav.settings') }}</a>
+            <a class="nav-link {% if request.endpoint == 'guide_view' %}active{% endif %}" href="{{ url_for('guide_view') }}">{{ _('nav.guide') }}</a>
         </nav>
 
         <div class="sidebar-footer">

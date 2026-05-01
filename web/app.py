@@ -37,7 +37,6 @@ from config.settings import (  # noqa: E402
     DATA_DIR,
     EXPORT_SETTINGS,
     INSTAGRAM_SETTINGS,
-    RAW_DIR,
     TIKTOK_SETTINGS,
 )
 from utils.export import collect_metadata_files, export_to_csv, parse_metadata_file  # noqa: E402
@@ -46,6 +45,7 @@ from web.i18n import DEFAULT_LANGUAGE, LANGUAGES, translate  # noqa: E402
 DEFAULT_CONFIG: Dict[str, Any] = {
     "project": "",
     "study_period": {"start": "", "end": ""},
+    "storage": {"data_dir": ""},
     "accounts": [],
 }
 
@@ -103,6 +103,7 @@ def _load_config() -> Dict[str, Any]:
         return _clone_default_config()
     config.setdefault("project", DEFAULT_CONFIG["project"])
     config.setdefault("study_period", dict(DEFAULT_CONFIG["study_period"]))
+    config.setdefault("storage", dict(DEFAULT_CONFIG["storage"]))
     config.setdefault("accounts", [])
     return config
 
@@ -112,6 +113,42 @@ def _save_config(config: Dict[str, Any]) -> None:
     with open(ACCOUNTS_FILE, "w", encoding="utf-8") as handle:
         json.dump(config, handle, indent=4, ensure_ascii=False)
         handle.write("\n")
+
+
+def _storage_settings(config: Dict[str, Any]) -> Dict[str, str]:
+    storage = config.get("storage")
+    if not isinstance(storage, dict):
+        return dict(DEFAULT_CONFIG["storage"])
+    return {"data_dir": str(storage.get("data_dir") or "").strip()}
+
+
+def _configured_data_dir(config: Optional[Dict[str, Any]] = None) -> Path:
+    storage = _storage_settings(config or _load_config())
+    value = storage.get("data_dir") or ""
+    if value:
+        path = Path(value).expanduser()
+        if not path.is_absolute():
+            path = BASE_DIR / path
+        return path.resolve()
+    return DATA_DIR.resolve()
+
+
+def _raw_dir(config: Optional[Dict[str, Any]] = None) -> Path:
+    return _configured_data_dir(config) / "raw"
+
+
+def _export_dir(config: Optional[Dict[str, Any]] = None) -> Path:
+    return _configured_data_dir(config) / "exports"
+
+
+def _csv_path(config: Optional[Dict[str, Any]] = None) -> Path:
+    return _export_dir(config) / EXPORT_SETTINGS["filename"]
+
+
+def _scraper_env(config: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
+    env = os.environ.copy()
+    env["SCRAPER_DATA_DIR"] = str(_configured_data_dir(config))
+    return env
 
 
 def _project_name(config: Dict[str, Any]) -> str:
@@ -211,8 +248,9 @@ def _post_category(post: Dict[str, Any], fallback: str = "") -> str:
 
 def _load_all_posts() -> List[Dict[str, Any]]:
     posts: List[Dict[str, Any]] = []
-    for meta_path in collect_metadata_files(RAW_DIR):
-        platform, category, parsed_posts = parse_metadata_file(meta_path, RAW_DIR)
+    raw_dir = _raw_dir()
+    for meta_path in collect_metadata_files(raw_dir):
+        platform, category, parsed_posts = parse_metadata_file(meta_path, raw_dir)
         for post in parsed_posts:
             if not isinstance(post, dict):
                 continue
@@ -220,7 +258,7 @@ def _load_all_posts() -> List[Dict[str, Any]]:
             item.setdefault("platform", _normalize_platform(platform))
             item.setdefault("category", category)
             item["_metadata_path"] = str(meta_path)
-            item["_metadata_relpath"] = _safe_relative_path(meta_path, RAW_DIR)
+            item["_metadata_relpath"] = _safe_relative_path(meta_path, raw_dir)
             item["_category"] = _post_category(item, category)
             item["_account"] = _post_account(item)
             item["_media_count"] = _media_count(item)
@@ -470,8 +508,9 @@ def _iter_media_references(post: Dict[str, Any]) -> List[str]:
 
 
 def _resolve_media_items(post: Dict[str, Any]) -> List[Dict[str, str]]:
+    raw_dir = _raw_dir()
     metadata_path = Path(str(post.get("_metadata_path") or ""))
-    meta_dir = metadata_path.parent if metadata_path else RAW_DIR
+    meta_dir = metadata_path.parent if metadata_path else raw_dir
     platform = str(post.get("platform") or "").lower()
     items: List[Dict[str, str]] = []
     seen = set()
@@ -480,8 +519,8 @@ def _resolve_media_items(post: Dict[str, Any]) -> List[Dict[str, str]]:
         if ref_path.is_absolute():
             continue
         candidates = [
-            RAW_DIR / ref_path,
-            RAW_DIR / platform / ref_path,
+            raw_dir / ref_path,
+            raw_dir / platform / ref_path,
             meta_dir / ref_path,
             meta_dir / "media" / ref_path.name,
             meta_dir / "screenshots" / ref_path.name,
@@ -489,7 +528,7 @@ def _resolve_media_items(post: Dict[str, Any]) -> List[Dict[str, str]]:
         for candidate in candidates:
             if not candidate.exists() or not candidate.is_file():
                 continue
-            rel = _safe_relative_path(candidate, RAW_DIR)
+            rel = _safe_relative_path(candidate, raw_dir)
             if rel in seen:
                 break
             seen.add(rel)
@@ -550,7 +589,7 @@ def index() -> str:
         study_period=period,
         instagram_cookie=_translated_status(_cookie_status_json(Path(INSTAGRAM_SETTINGS["cookies_path"]))),
         tiktok_cookie=_translated_status(_cookie_status_text(Path(TIKTOK_SETTINGS["cookies_path"]))),
-        csv_path=EXPORT_SETTINGS["output_dir"] / EXPORT_SETTINGS["filename"],
+        csv_path=_csv_path(config),
     )
 
 
@@ -602,9 +641,10 @@ def post_detail(post_id: str) -> str:
 
 @app.route("/media/<path:filepath>")
 def serve_media(filepath: str) -> Response:
-    candidate = (RAW_DIR / filepath).resolve()
+    raw_dir = _raw_dir()
+    candidate = (raw_dir / filepath).resolve()
     try:
-        candidate.relative_to(RAW_DIR.resolve())
+        candidate.relative_to(raw_dir.resolve())
     except ValueError:
         return Response("Forbidden", status=403)
     if not candidate.exists() or not candidate.is_file():
@@ -628,7 +668,14 @@ def settings_view() -> str:
         project_value = str(project or "")
     if project_value.lower() in PLACEHOLDER_PROJECT_NAMES:
         project_value = ""
-    return render_template("settings.html", project_name_value=project_value, study_period=_study_period(config))
+    return render_template(
+        "settings.html",
+        project_name_value=project_value,
+        study_period=_study_period(config),
+        storage=_storage_settings(config),
+        default_data_dir=str(DATA_DIR.resolve()),
+        effective_data_dir=str(_configured_data_dir(config)),
+    )
 
 
 @app.route("/cookies")
@@ -649,8 +696,10 @@ def update_project_settings() -> Response:
     project = str(data.get("project") or "").strip()
     start = str(data.get("start") or "").strip()
     end = str(data.get("end") or "").strip()
+    data_dir = str(data.get("data_dir") or "").strip()
     config["project"] = project
     config["study_period"] = {"start": start, "end": end}
+    config["storage"] = {"data_dir": data_dir}
     _save_config(config)
     return jsonify({"success": True, "message": translate(g.lang, "js.saved")})
 
@@ -663,9 +712,10 @@ def reset_config() -> Response:
 
 @app.route("/api/reset/data", methods=["POST"])
 def reset_data() -> Response:
-    if RAW_DIR.exists():
-        shutil.rmtree(RAW_DIR)
-    exports_dir = Path(EXPORT_SETTINGS["output_dir"])
+    raw_dir = _raw_dir()
+    if raw_dir.exists():
+        shutil.rmtree(raw_dir)
+    exports_dir = _export_dir()
     if exports_dir.exists():
         shutil.rmtree(exports_dir)
     return jsonify({"success": True, "message": translate(g.lang, "js.saved")})
@@ -755,7 +805,8 @@ def run_scrape() -> Response:
     platform = str(data.get("platform") or "all").lower()
     if platform not in {"all", "instagram", "tiktok"}:
         return jsonify({"error": translate(g.lang, "js.select_platform")}), 400
-    if not _accounts(_load_config()):
+    config = _load_config()
+    if not _accounts(config):
         return jsonify({"error": translate(g.lang, "js.select_account")}), 400
     command = [sys.executable, str(BASE_DIR / "main.py"), "--platform", platform]
     category = str(data.get("category") or "all")
@@ -776,7 +827,7 @@ def run_scrape() -> Response:
         command.append("--no-export")
 
     selected_accounts = [str(item).strip() for item in data.get("accounts", []) if str(item).strip()]
-    env = os.environ.copy()
+    env = _scraper_env(config)
     if selected_accounts:
         env["SCRAPE_ACCOUNTS"] = ",".join(selected_accounts)
 
@@ -794,7 +845,7 @@ def run_screenshots() -> Response:
         return jsonify({"error": translate(g.lang, "js.select_platform")}), 400
     command = [sys.executable, str(BASE_DIR / "main.py"), "--platform", platform, "--screenshots-only"]
     task_id = _new_task("screenshots")
-    thread = threading.Thread(target=_run_command_task, args=(task_id, command, os.environ.copy()), daemon=True)
+    thread = threading.Thread(target=_run_command_task, args=(task_id, command, _scraper_env()), daemon=True)
     thread.start()
     return jsonify({"task_id": task_id})
 
@@ -803,8 +854,8 @@ def run_screenshots() -> Response:
 def run_export() -> Response:
     try:
         output_path = export_to_csv(
-            raw_dir=RAW_DIR,
-            output_dir=EXPORT_SETTINGS["output_dir"],
+            raw_dir=_raw_dir(),
+            output_dir=_export_dir(),
             filename=EXPORT_SETTINGS["filename"],
         )
     except Exception as exc:
@@ -829,11 +880,11 @@ def api_stats() -> Response:
 
 @app.route("/download/csv")
 def download_csv() -> Response:
-    csv_path = EXPORT_SETTINGS["output_dir"] / EXPORT_SETTINGS["filename"]
+    csv_path = _csv_path()
     if not csv_path.exists():
         csv_path = export_to_csv(
-            raw_dir=RAW_DIR,
-            output_dir=EXPORT_SETTINGS["output_dir"],
+            raw_dir=_raw_dir(),
+            output_dir=_export_dir(),
             filename=EXPORT_SETTINGS["filename"],
         )
     return send_file(csv_path, as_attachment=True, download_name=EXPORT_SETTINGS["filename"])

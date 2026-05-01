@@ -11,13 +11,20 @@
 
 <section class="panel settings-panel">
     <div class="panel-header">
-        <h2>{{ _('settings.project_name') }}</h2>
+        <div>
+            <h2>{{ _('settings.project_section') }}</h2>
+            <p>{{ _('settings.project_help') }}</p>
+        </div>
     </div>
     <div class="form-grid settings-grid">
         <label class="form-field wide">
             <span>{{ _('settings.project_name') }}</span>
             <input id="settings-project" class="input" type="text" value="{{ project_name_value }}">
         </label>
+        <div class="form-field wide field-note">
+            <strong>{{ _('settings.period_section') }}</strong>
+            <span>{{ _('settings.period_help') }}</span>
+        </div>
         <label class="form-field">
             <span>{{ _('common.start_date') }}</span>
             <input id="settings-start" class="input" type="date" value="{{ study_period.start }}">
@@ -25,6 +32,15 @@
         <label class="form-field">
             <span>{{ _('common.end_date') }}</span>
             <input id="settings-end" class="input" type="date" value="{{ study_period.end }}">
+        </label>
+        <div class="form-field wide field-note">
+            <strong>{{ _('settings.storage_section') }}</strong>
+            <span>{{ _('settings.storage_help') }}</span>
+        </div>
+        <label class="form-field wide">
+            <span>{{ _('settings.data_dir') }}</span>
+            <input id="settings-data-dir" class="input" type="text" value="{{ storage.data_dir }}" placeholder="{{ default_data_dir }}">
+            <small>{{ _('settings.data_dir_effective', path=effective_data_dir) }}</small>
         </label>
     </div>
     <div class="button-row form-actions">

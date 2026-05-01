@@ -304,6 +304,7 @@ function saveProjectSettings(button) {
         project: document.getElementById('settings-project')?.value || '',
         start: document.getElementById('settings-start')?.value || '',
         end: document.getElementById('settings-end')?.value || '',
+        data_dir: document.getElementById('settings-data-dir')?.value || '',
     };
     setButtonBusy(button, uiText('saving'));
     postJSON('/api/settings/project', payload).then(result => {

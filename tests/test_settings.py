@@ -77,3 +77,11 @@ class TestSettingsConstants:
         assert isinstance(settings.DATA_DIR, Path)
         assert isinstance(settings.RAW_DIR, Path)
         assert isinstance(settings.ACCOUNTS_FILE, Path)
+
+    def test_resolve_data_dir_from_relative_path(self):
+        assert settings.resolve_data_dir("custom-data") == (settings.BASE_DIR / "custom-data").resolve()
+
+    def test_resolve_data_dir_from_environment(self, tmp_path, monkeypatch):
+        data_dir = tmp_path / "scraper-data"
+        monkeypatch.setenv("SCRAPER_DATA_DIR", str(data_dir))
+        assert settings.resolve_data_dir() == data_dir.resolve()

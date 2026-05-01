@@ -411,6 +411,22 @@ a:hover {
     grid-column: 1 / -1;
 }
 
+.form-field small,
+.field-note span {
+    color: var(--muted);
+    font-size: 0.86rem;
+    font-weight: 500;
+}
+
+.field-note {
+    padding: 10px 0 0;
+}
+
+.field-note strong {
+    color: var(--text);
+    font-size: 0.96rem;
+}
+
 .input {
     width: 100%;
     min-height: 40px;
@@ -716,6 +732,16 @@ textarea.input {
 .helper-text {
     margin-top: 12px;
     font-size: 0.92rem;
+}
+
+.manual-steps {
+    margin: 10px 0 14px;
+    padding-left: 22px;
+    color: var(--muted);
+}
+
+.manual-steps li {
+    margin-bottom: 7px;
 }
 
 .access-panel {

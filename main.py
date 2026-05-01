@@ -22,6 +22,7 @@ from config.settings import (
     RAW_DIR,
     TIKTOK_SETTINGS,
     get_study_period,
+    resolve_data_dir,
 )
 from scrapers.instagram_playwright import InstagramPlaywrightScraper
 from scrapers.tiktok_scraper import TikTokScraper
@@ -46,6 +47,14 @@ def load_accounts() -> dict:
         sys.exit(1)
     with open(ACCOUNTS_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def configured_data_dir(accounts_config: dict) -> Path:
+    storage = accounts_config.get("storage") if isinstance(accounts_config, dict) else {}
+    value = ""
+    if isinstance(storage, dict):
+        value = str(storage.get("data_dir") or "").strip()
+    return resolve_data_dir(value or None)
 
 
 def parse_args() -> argparse.Namespace:
@@ -113,6 +122,7 @@ def run_scraping(
     end_date: str,
     category: str | None = None,
     max_posts: int | None = None,
+    raw_dir: Path = RAW_DIR,
 ) -> None:
     """Run the scraping pipeline for the selected platform(s)."""
     if platform in ("instagram", "all"):
@@ -121,7 +131,7 @@ def run_scraping(
         logger.info("=" * 60)
         ig_scraper = InstagramPlaywrightScraper(
             settings=INSTAGRAM_SETTINGS,
-            output_dir=RAW_DIR / "instagram",
+            output_dir=raw_dir / "instagram",
         )
         ig_scraper.scrape_all_accounts(
             accounts_config=accounts_config,
@@ -137,7 +147,7 @@ def run_scraping(
         logger.info("=" * 60)
         tt_scraper = TikTokScraper(
             settings=TIKTOK_SETTINGS,
-            output_dir=RAW_DIR / "tiktok",
+            output_dir=raw_dir / "tiktok",
         )
         tt_scraper.scrape_all_accounts(
             accounts_config=accounts_config,
@@ -152,6 +162,9 @@ def main() -> None:
     """Main entry point."""
     args = parse_args()
     accounts_config = load_accounts()
+    data_dir = configured_data_dir(accounts_config)
+    raw_dir = data_dir / "raw"
+    export_dir = data_dir / "exports"
 
     # Determine study period
     default_start, default_end = get_study_period()
@@ -185,13 +198,13 @@ def main() -> None:
         if args.platform in ("instagram", "all"):
             ig = InstagramPlaywrightScraper(
                 settings=INSTAGRAM_SETTINGS,
-                output_dir=RAW_DIR / "instagram",
+                output_dir=raw_dir / "instagram",
             )
             ig.take_screenshots_from_metadata()
         if args.platform in ("tiktok", "all"):
             tt = TikTokScraper(
                 settings=TIKTOK_SETTINGS,
-                output_dir=RAW_DIR / "tiktok",
+                output_dir=raw_dir / "tiktok",
             )
             tt.take_screenshots_from_metadata()
         return
@@ -199,15 +212,15 @@ def main() -> None:
     # Run scraping
     run_scraping(
         accounts_config, args.platform, start_date, end_date,
-        category=category, max_posts=args.max_posts,
+        category=category, max_posts=args.max_posts, raw_dir=raw_dir,
     )
 
     # Export consolidated CSV (unless explicitly skipped)
     if not args.no_export:
         logger.info("Exporting consolidated CSV...")
         export_to_csv(
-            raw_dir=RAW_DIR,
-            output_dir=EXPORT_SETTINGS["output_dir"],
+            raw_dir=raw_dir,
+            output_dir=export_dir,
             filename=EXPORT_SETTINGS["filename"],
         )
         logger.info("Export complete.")

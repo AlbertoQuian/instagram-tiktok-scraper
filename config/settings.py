@@ -7,11 +7,23 @@ Global settings loaded dynamically from accounts.json.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+from typing import Optional, Union
 
 # Project paths
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
+
+
+def resolve_data_dir(value: Optional[Union[str, Path]] = None) -> Path:
+    configured = value or os.environ.get("SCRAPER_DATA_DIR") or BASE_DIR / "data"
+    path = Path(configured).expanduser()
+    if not path.is_absolute():
+        path = BASE_DIR / path
+    return path.resolve()
+
+
+DATA_DIR = resolve_data_dir()
 RAW_DIR = DATA_DIR / "raw"
 ACCOUNTS_FILE = BASE_DIR / "config" / "accounts.json"
 
