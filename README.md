@@ -3,7 +3,7 @@
 ![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue?logo=python&logoColor=white)
 ![License: GPL v3](https://img.shields.io/badge/license-GPL%20v3-blue)
 ![Platforms: macOS · Linux · Windows](https://img.shields.io/badge/platforms-macOS%20%C2%B7%20Linux%20%C2%B7%20Windows-lightgrey)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19054043.svg)](https://doi.org/10.5281/zenodo.19054043)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19054042.svg)](https://doi.org/10.5281/zenodo.19054042)
 
 A Python-based tool for scraping public Instagram and TikTok profiles,
 designed for **academic research** and data analysis. Collects posts,
@@ -239,10 +239,13 @@ when needed, choose the local folder where results are saved, launch scraping jo
 monitor logs, browse collected data, reset the local setup, and export the
 consolidated CSV.
 
-For a double-click launcher, use `launch_gui.command` on macOS/Linux or
-`launch_gui.bat` on Windows. These launchers create the virtual environment
-if needed, install dependencies, install Playwright Chromium, start the GUI,
-and open the browser automatically.
+For a double-click launcher, use `launch_gui.command` on macOS,
+`launch_gui.sh` on Linux, or `launch_gui.bat` on Windows. These launchers
+create the virtual environment if needed, install dependencies, install
+Playwright Chromium, start the GUI, and open the browser automatically.
+
+> Linux/macOS users: if the script is not executable, run
+> `chmod +x launch_gui.sh launch_gui.command` once after cloning.
 
 You can also launch it with:
 
@@ -310,7 +313,8 @@ to restrict scraping to specific accounts.
 ```
 ├── main.py                      # CLI entry point
 ├── run_web.py                   # Local web interface launcher
-├── launch_gui.command           # Double-click launcher for macOS/Linux
+├── launch_gui.command           # Double-click launcher for macOS
+├── launch_gui.sh                # Double-click launcher for Linux
 ├── launch_gui.bat               # Double-click launcher for Windows
 ├── config/
 │   ├── settings.py              # Global paths and config loader
@@ -450,17 +454,18 @@ If you use this tool in academic work, please cite it using the metadata in
   author       = {Quian, Alberto},
   title        = {Instagram \& TikTok Scraper},
   year         = {2026},
+  version      = {2.0.0},
   institution  = {Universidade de Santiago de Compostela},
   url          = {https://github.com/AlbertoQuian/instagram-tiktok-scraper},
-  doi          = {10.5281/zenodo.19054043},
+  doi          = {10.5281/zenodo.19054042},
   license      = {GPL-3.0}
 }
 ```
 
 Or in APA style:
 
-> Quian, A. (2026). *Instagram & TikTok Scraper* (v1.0.0) [Computer software].
-> Zenodo. https://doi.org/10.5281/zenodo.19054043
+> Quian, A. (2026). *Instagram & TikTok Scraper* (v2.0.0) [Computer software].
+> Zenodo. <https://doi.org/10.5281/zenodo.19054042>
 
 ## License
 

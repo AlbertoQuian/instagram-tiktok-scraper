@@ -7,11 +7,13 @@ authors:
     given-names: Alberto
     orcid: "https://orcid.org/0000-0002-8593-7999"
     affiliation: "Universidade de Santiago de Compostela"
-version: "1.0.0"
-date-released: "2026-03-16"
+version: "2.0.0"
+date-released: "2026-05-01"
 license: GPL-3.0-only
 repository-code: "https://github.com/AlbertoQuian/instagram-tiktok-scraper"
-doi: "10.5281/zenodo.19054043"
+# Concept DOI (always resolves to the latest version on Zenodo).
+# Replace with the version DOI of the current release if you prefer pinning.
+doi: "10.5281/zenodo.19054042"
 keywords:
   - social-media
   - scraper

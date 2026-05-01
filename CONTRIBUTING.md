@@ -11,6 +11,7 @@ documentation, and support for new platforms.
    ```bash
    python -m venv venv
    source venv/bin/activate    # macOS / Linux
+   # venv\Scripts\activate     # Windows (PowerShell or cmd)
    pip install -r requirements.txt
    playwright install chromium
    ```
