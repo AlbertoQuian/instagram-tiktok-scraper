@@ -9,19 +9,30 @@
     </div>
 </section>
 
+<section class="panel notice-panel">
+    <p>{{ _('cookies.security_note') }}</p>
+</section>
+
 <section class="content-grid two-columns">
     <div class="panel">
         <div class="panel-header">
             <h2>{{ _('cookies.instagram') }}</h2>
             <span class="status-pill {{ instagram_cookie.status }}">{{ instagram_cookie.message }}</span>
         </div>
-        <label class="form-field">
-            <span>{{ _('cookies.paste_json') }}</span>
-            <textarea id="instagram-cookies" class="input code-input" rows="16">{{ instagram_preview }}</textarea>
-        </label>
-        <div class="button-row form-actions">
-            <button type="button" class="btn primary" onclick="saveInstagramCookies(this)">{{ _('cookies.save_instagram') }}</button>
+        <div class="button-row">
+            <button type="button" class="btn primary" onclick="connectCookies('instagram', this)">{{ _('cookies.connect_instagram') }}</button>
+            <button type="button" class="btn danger" onclick="deleteCookies('instagram', this)">{{ _('cookies.delete_instagram') }}</button>
         </div>
+        <details class="advanced-block">
+            <summary>{{ _('cookies.advanced_import') }}</summary>
+            <label class="form-field">
+                <span>{{ _('cookies.paste_json') }}</span>
+                <textarea id="instagram-cookies" class="input code-input secret-input" rows="10" spellcheck="false"></textarea>
+            </label>
+            <div class="button-row form-actions">
+                <button type="button" class="btn secondary" onclick="saveInstagramCookies(this)">{{ _('cookies.save_instagram') }}</button>
+            </div>
+        </details>
     </div>
 
     <div class="panel">
@@ -29,13 +40,26 @@
             <h2>{{ _('cookies.tiktok') }}</h2>
             <span class="status-pill {{ tiktok_cookie.status }}">{{ tiktok_cookie.message }}</span>
         </div>
-        <label class="form-field">
-            <span>{{ _('cookies.paste_text') }}</span>
-            <textarea id="tiktok-cookies" class="input code-input" rows="16">{{ tiktok_preview }}</textarea>
-        </label>
-        <div class="button-row form-actions">
-            <button type="button" class="btn primary" onclick="saveTikTokCookies(this)">{{ _('cookies.save_tiktok') }}</button>
+        <div class="button-row">
+            <button type="button" class="btn primary" onclick="connectCookies('tiktok', this)">{{ _('cookies.connect_tiktok') }}</button>
+            <button type="button" class="btn danger" onclick="deleteCookies('tiktok', this)">{{ _('cookies.delete_tiktok') }}</button>
         </div>
+        <details class="advanced-block">
+            <summary>{{ _('cookies.advanced_import') }}</summary>
+            <label class="form-field">
+                <span>{{ _('cookies.paste_text') }}</span>
+                <textarea id="tiktok-cookies" class="input code-input secret-input" rows="10" spellcheck="false"></textarea>
+            </label>
+            <div class="button-row form-actions">
+                <button type="button" class="btn secondary" onclick="saveTikTokCookies(this)">{{ _('cookies.save_tiktok') }}</button>
+            </div>
+        </details>
     </div>
+</section>
+
+<section class="panel small-panel" id="task-panel">
+    <h2>{{ _('task.title') }}</h2>
+    <div id="task-status" class="task-status idle">{{ _('task.waiting') }}</div>
+    <div id="task-log" class="task-log empty">{{ _('task.empty_log') }}</div>
 </section>
 {% endblock %}

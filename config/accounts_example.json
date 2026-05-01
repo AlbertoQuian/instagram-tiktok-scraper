@@ -1,30 +1,8 @@
 {
-    "project": "My Research Project",
+    "project": "",
     "study_period": {
-        "start": "2024-01-01",
-        "end": "2024-06-30"
+        "start": "",
+        "end": ""
     },
-    "accounts": [
-        {
-            "account_name": "Example Account One",
-            "account_id": "EA1",
-            "category": "media",
-            "instagram": "example_ig_handle",
-            "tiktok": "example_tiktok_handle"
-        },
-        {
-            "account_name": "Example Account Two",
-            "account_id": "EA2",
-            "category": "media",
-            "instagram": "another_ig_handle",
-            "tiktok": "another_tiktok_handle"
-        },
-        {
-            "account_name": "Example Account Three",
-            "account_id": "EA3",
-            "category": "politics",
-            "instagram": "third_ig_handle",
-            "tiktok": "third_tiktok_handle"
-        }
-    ]
+    "accounts": []
 }

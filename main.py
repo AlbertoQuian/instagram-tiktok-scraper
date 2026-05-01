@@ -86,7 +86,7 @@ def parse_args() -> argparse.Namespace:
         "--max-posts",
         type=int,
         default=None,
-        help="Maximum posts per profile (overrides settings)",
+        help="Maximum posts per profile; use 0 for no limit (overrides settings)",
     )
     parser.add_argument(
         "--no-media",
@@ -128,7 +128,7 @@ def run_scraping(
             start_date=start_date,
             end_date=end_date,
             category=category,
-            max_posts=max_posts or INSTAGRAM_SETTINGS.get("max_posts_per_profile", 200),
+            max_posts=max_posts if max_posts is not None else INSTAGRAM_SETTINGS.get("max_posts_per_profile", 200),
         )
 
     if platform in ("tiktok", "all"):

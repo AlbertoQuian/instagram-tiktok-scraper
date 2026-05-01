@@ -58,6 +58,11 @@ class TestParseArgs:
             args = parse_args()
         assert args.max_posts == 50
 
+    def test_max_posts_zero_means_unlimited(self):
+        with patch("sys.argv", ["main.py", "--max-posts", "0"]):
+            args = parse_args()
+        assert args.max_posts == 0
+
     def test_screenshots_only_flag(self):
         with patch("sys.argv", ["main.py", "--screenshots-only"]):
             args = parse_args()

@@ -15,22 +15,28 @@
         <button type="button" class="btn secondary" onclick="addAccountRow()">{{ _('accounts.add') }}</button>
     </div>
 
+    <div class="quick-import">
+        <label class="form-field">
+            <span>{{ _('accounts.import_label') }}</span>
+            <textarea id="bulk-accounts" class="input" rows="4" placeholder="{{ _('accounts.import_placeholder') }}"></textarea>
+        </label>
+        <button type="button" class="btn secondary" onclick="addBulkAccounts()">{{ _('accounts.import_button') }}</button>
+    </div>
+
     <div class="accounts-editor" id="accounts-editor">
         <div class="account-row account-row-head">
             <span>{{ _('accounts.account_name') }}</span>
-            <span>{{ _('accounts.account_id') }}</span>
-            <span>{{ _('common.category') }}</span>
             <span>{{ _('accounts.instagram') }}</span>
             <span>{{ _('accounts.tiktok') }}</span>
+            <span>{{ _('accounts.label') }}</span>
             <span>{{ _('common.actions') }}</span>
         </div>
         {% for account in accounts %}
         <div class="account-row">
             <input class="input account-name" value="{{ account.account_name }}" placeholder="{{ _('accounts.account_name') }}">
-            <input class="input account-id" value="{{ account.account_id }}" placeholder="{{ _('accounts.account_id') }}">
-            <input class="input account-category" value="{{ account.category }}" placeholder="{{ _('common.category') }}">
-            <input class="input account-instagram" value="{{ account.instagram }}" placeholder="usuario_instagram">
-            <input class="input account-tiktok" value="{{ account.tiktok }}" placeholder="usuario_tiktok">
+            <input class="input account-instagram" value="{{ account.instagram }}" placeholder="{{ _('js.instagram_placeholder') }}">
+            <input class="input account-tiktok" value="{{ account.tiktok }}" placeholder="{{ _('js.tiktok_placeholder') }}">
+            <input class="input account-category" value="{{ account.category }}" placeholder="{{ _('accounts.label') }}">
             <button type="button" class="btn danger compact-only" onclick="removeAccountRow(this)">{{ _('common.remove') }}</button>
         </div>
         {% endfor %}

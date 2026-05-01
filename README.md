@@ -43,7 +43,7 @@ date range.
 - **Unified CSV export** consolidating data from both platforms
 - **Browser-based GUI** for non-technical workflows, available in Spanish and English
 - **Automatic language detection** via lingua-py (ISO 639-1 codes)
-- **Configurable** account list with optional category grouping
+- **Configurable** account list with optional label grouping
 - **Rate limiting** and retry logic with exponential back-off
 
 ## Requirements
@@ -111,28 +111,31 @@ playwright install chromium
 
 ### Account List
 
-1. Copy the example configuration:
+The easiest path is the web interface: open **Accounts**, then paste an
+Instagram or TikTok account URL/handle. A label is optional and can be any
+grouping that makes sense for your work.
+
+If you prefer editing JSON directly, copy the example configuration:
 
 ```bash
 cp config/accounts_example.json config/accounts.json
 ```
 
-2. Edit `config/accounts.json` with your target accounts:
+Then edit `config/accounts.json` with your target accounts:
 
 ```json
 {
-    "project": "My Research Project",
+    "project": "",
     "study_period": {
-        "start": "2024-01-01",
-        "end": "2024-06-30"
+        "start": "",
+        "end": ""
     },
     "accounts": [
         {
-            "account_name": "Account Display Name",
-            "account_id": "SHORT_ID",
-            "category": "optional_category",
-            "instagram": "ig_username",
-            "tiktok": "tiktok_username"
+            "account_name": "Optional display name",
+            "category": "optional_label",
+            "instagram": "instagram_username_or_url",
+            "tiktok": "tiktok_username_or_url"
         }
     ]
 }
@@ -140,18 +143,26 @@ cp config/accounts_example.json config/accounts.json
 
 Each **account** represents a logical entity (brand, organization, public
 figure, etc.) that may have profiles on one or both platforms. The `category`
-field is optional and can represent any grouping you need (country, topic,
-sector, etc.). When present, data is stored in a subdirectory named after
-the category.
+field is an optional free label; it can represent a country, topic, campaign,
+client, course, experiment, or any grouping you need. When present, data is
+stored in a subdirectory named after the label.
 
 ### Instagram Session Cookies
 
-Instagram aggressively blocks unauthenticated requests. **Without session
-cookies, the scraper will retrieve zero posts for most profiles.** Providing
-your session cookies allows the scraper to make requests as your logged-in
-browser session.
+Instagram aggressively blocks unauthenticated requests. **Without a saved
+browser session, the scraper may retrieve zero posts for many profiles.** The
+GUI includes a **Connections** page that opens a browser window, lets you log
+in normally, and stores the local session for the scraper. TikTok usually works
+without a session, but the same page can save a TikTok session if needed.
 
-#### How to export your cookies
+Cookies are personal session credentials. They can stop working at any time
+because platforms expire or revoke sessions. The cookie files are git-ignored;
+never commit or share them.
+
+#### Manual cookie import
+
+The GUI's browser login is recommended. Manual import is available under the
+advanced section of **Connections** if you already know how to export cookies.
 
 1. Install a browser extension that can export cookies in **JSON format**:
    - Firefox: [Cookie Editor](https://addons.mozilla.org/firefox/addon/cookie-editor/)
@@ -159,7 +170,7 @@ browser session.
 2. Log in to [instagram.com](https://www.instagram.com) in your browser.
 3. Open **Cookie Editor**, filter by `instagram.com`, and export **all
    cookies** as JSON.
-4. Save the exported file to `config/instagram_cookies.json`.
+4. Paste the exported JSON into the advanced Instagram field, or save it to `config/instagram_cookies.json`.
 
 The file must be a JSON array of cookie objects. Example structure:
 
@@ -186,10 +197,10 @@ The file must be a JSON array of cookie objects. Example structure:
 ]
 ```
 
-> **Important:** The cookie file is automatically excluded from version control
+> **Important:** Cookie files are automatically excluded from version control
 > via `.gitignore`. **Never commit your session cookies to a public
-> repository.** Cookies expire periodically; re-export them if the scraper
-> stops retrieving data.
+> repository.** Cookies expire periodically; reconnect if the scraper stops
+> retrieving data.
 
 ## Usage
 
@@ -201,9 +212,10 @@ Start the local GUI:
 python run_web.py
 ```
 
-Then open <http://127.0.0.1:5000>. The interface lets you edit accounts,
-switch between Spanish and English, manage cookies, launch scraping jobs,
-monitor logs, browse collected data, and export the consolidated CSV.
+Then open <http://127.0.0.1:5000>. The interface starts blank: add accounts by
+pasting URLs or handles, switch between Spanish and English, connect sessions
+when needed, launch scraping jobs, monitor logs, browse collected data, reset
+the local setup, and export the consolidated CSV.
 
 For a double-click launcher, use `launch_gui.command` on macOS/Linux or
 `launch_gui.bat` on Windows. These launchers create the virtual environment
@@ -225,14 +237,17 @@ python main.py
 # Scrape only Instagram
 python main.py --platform instagram
 
-# Scrape only TikTok for a specific category
-python main.py --platform tiktok --category spain
+# Scrape only TikTok for a specific label
+python main.py --platform tiktok --category optional_label
 
 # Override the study period
 python main.py --start-date 2024-03-01 --end-date 2024-06-30
 
 # Limit the number of posts per profile
 python main.py --max-posts 50
+
+# Scrape without an item limit
+python main.py --max-posts 0
 
 # Skip media downloads (collect metadata only)
 python main.py --no-media
@@ -256,7 +271,7 @@ SCRAPE_ACCOUNTS="handle1,handle2" python main.py
 | `--category` | Scrape only accounts matching a category label |
 | `--start-date` | Override the study period start date (`YYYY-MM-DD`) |
 | `--end-date` | Override the study period end date (`YYYY-MM-DD`) |
-| `--max-posts` | Maximum posts per profile (overrides `MAX_POSTS_PER_PROFILE` in `settings.py`) |
+| `--max-posts` | Maximum posts per profile; use `0` for no item limit |
 | `--no-media` | Skip downloading media files |
 | `--no-screenshots` | Skip taking post screenshots |
 | `--no-export` | Skip the consolidated CSV export at the end |
@@ -279,7 +294,8 @@ to restrict scraping to specific accounts.
 │   ├── settings.py              # Global paths and config loader
 │   ├── accounts.json            # Your account configuration (git-ignored)
 │   ├── accounts_example.json    # Template configuration
-│   └── instagram_cookies.json   # Instagram session cookies (git-ignored)
+│   ├── instagram_cookies.json   # Instagram session cookies (git-ignored)
+│   └── tiktok_cookies.txt       # Optional TikTok session cookies (git-ignored)
 ├── scrapers/
 │   ├── instagram_playwright.py  # Instagram scraper (Playwright + API interception)
 │   └── tiktok_scraper.py        # TikTok scraper (yt-dlp + carousel reconstruction)
@@ -290,12 +306,12 @@ to restrict scraping to specific accounts.
 ├── data/                        # All scraped data (git-ignored)
 │   ├── raw/
 │   │   ├── instagram/
-│   │   │   └── [<category>/]<username>/
+│   │   │   └── [<label>/]<username>/
 │   │   │       ├── <username>_metadata.json
 │   │   │       ├── media/
 │   │   │       └── screenshots/
 │   │   └── tiktok/
-│   │       └── [<category>/]<username>/
+│   │       └── [<label>/]<username>/
 │   │           ├── <username>_metadata.json
 │   │           ├── media/
 │   │           └── screenshots/

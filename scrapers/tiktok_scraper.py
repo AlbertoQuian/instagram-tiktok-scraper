@@ -18,6 +18,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.request
@@ -64,7 +65,7 @@ class TikTokScraper:
         Returns:
             List of dicts with post metadata.
         """
-        max_posts = max_posts or self.max_posts
+        max_posts = self.max_posts if max_posts is None else max_posts
 
         start_dt = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
         end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(
@@ -92,7 +93,7 @@ class TikTokScraper:
         # Without this, TikTok sometimes serves a HEVC video stream with no
         # embedded audio, producing silent files.
         cmd = [
-            "yt-dlp",
+            sys.executable, "-m", "yt_dlp",
             "--no-warnings",
             "--impersonate", "Chrome-136:Macos-15",
             "-o", output_template,
@@ -106,9 +107,11 @@ class TikTokScraper:
             "--datebefore", end_date.replace("-", ""),
             "--sleep-interval", str(self.sleep_interval),
             "--max-sleep-interval", str(self.max_sleep_interval),
-            "--playlist-items", f"1-{max_posts}",
             url,
         ]
+
+        if max_posts > 0:
+            cmd.extend(["--playlist-items", f"1-{max_posts}"])
 
         if not self.download_videos:
             cmd.append("--skip-download")
@@ -127,7 +130,7 @@ class TikTokScraper:
             logger.error("yt-dlp timed out for @%s", username)
             return []
         except FileNotFoundError:
-            logger.error("yt-dlp not found. Install with: pip install yt-dlp")
+            logger.error("Python executable not found while launching yt-dlp")
             return []
         except Exception as e:
             logger.error("yt-dlp error for @%s: %s", username, e)
@@ -454,7 +457,7 @@ class TikTokScraper:
         """Download only the audio track of a TikTok post."""
         output_template = str(dest_dir / f"{video_id}.%(ext)s")
         cmd = [
-            "yt-dlp",
+            sys.executable, "-m", "yt_dlp",
             "--no-warnings",
             "--impersonate", "Chrome-136:Macos-15",
             "-f", "ba",
@@ -662,7 +665,7 @@ class TikTokScraper:
         category: str | None = None,
     ) -> dict:
         """Scrape all configured TikTok accounts."""
-        max_posts = max_posts or self.max_posts
+        max_posts = self.max_posts if max_posts is None else max_posts
         all_results = {}
         accounts = accounts_config.get("accounts", [])
 
@@ -820,7 +823,7 @@ class TikTokScraper:
                 sleep_after=3,
             )
             user = api.user(username)
-            async for video in user.videos(count=max_posts):
+            async for video in user.videos(count=max_posts if max_posts > 0 else None):
                 data = video.as_dict
                 post = self._extract_api_data(data, username, account_name, account_id, category)
                 if not post:

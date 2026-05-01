@@ -413,6 +413,10 @@ textarea.input {
     gap: 6px;
 }
 
+.header-actions {
+    margin-top: 0;
+}
+
 .form-actions {
     justify-content: flex-end;
 }
@@ -559,6 +563,59 @@ textarea.input {
     line-height: 1.5;
 }
 
+.task-log.empty {
+    background: #fbfcfd;
+    color: var(--muted);
+    font-family: inherit;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.advanced-block {
+    margin-top: 18px;
+    border-top: 1px solid var(--border-soft);
+    padding-top: 14px;
+}
+
+.advanced-block summary {
+    cursor: pointer;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.quick-import {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 18px;
+}
+
+.notice-panel {
+    margin-bottom: 18px;
+    background: #fff8eb;
+    color: #80520f;
+    box-shadow: none;
+}
+
+.notice-panel p {
+    margin: 0;
+}
+
+.secret-input {
+    -webkit-text-security: disc;
+}
+
+.empty-state.with-action {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    grid-column: 1 / -1;
+}
+
 .accounts-editor {
     display: grid;
     gap: 8px;
@@ -566,7 +623,7 @@ textarea.input {
 
 .account-row {
     display: grid;
-    grid-template-columns: minmax(180px, 1.3fr) minmax(90px, 0.6fr) minmax(120px, 0.8fr) minmax(150px, 1fr) minmax(150px, 1fr) auto;
+    grid-template-columns: minmax(180px, 1fr) minmax(170px, 1.15fr) minmax(170px, 1.15fr) minmax(140px, 0.8fr) auto;
     gap: 8px;
     align-items: center;
 }
@@ -733,6 +790,10 @@ textarea.input {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .quick-import {
+        grid-template-columns: 1fr;
+    }
+
     .account-row-head {
         display: none;
     }
@@ -786,7 +847,8 @@ textarea.input {
     }
 
     .button-row,
-    .options-row {
+    .options-row,
+    .empty-state.with-action {
         align-items: stretch;
         flex-direction: column;
     }

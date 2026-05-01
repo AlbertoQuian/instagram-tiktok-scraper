@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from datetime import datetime, timezone
@@ -54,7 +55,7 @@ class InstagramPlaywrightScraper:
         category: str,
         start_date: str,
         end_date: str,
-        max_posts: int = 200,
+        max_posts: int | None = 200,
     ) -> list[dict]:
         """
         Scrape posts from a public Instagram profile by intercepting
@@ -484,10 +485,10 @@ class InstagramPlaywrightScraper:
                 }
                 posts.append(post)
 
-                if len(posts) >= max_posts:
+                if max_posts and max_posts > 0 and len(posts) >= max_posts:
                     break
 
-            if len(posts) >= max_posts:
+            if max_posts and max_posts > 0 and len(posts) >= max_posts:
                 break
             if new_this_round == 0 and scroll_n > 2:
                 break
@@ -862,9 +863,6 @@ class InstagramPlaywrightScraper:
         same post with proper format selection (``bv*+ba/b``) and merge the
         two streams into a playable file with audio.
         """
-        if not shutil.which("yt-dlp"):
-            return
-
         for post in posts:
             post_url = post.get("post_url") or ""
             if not post_url:
@@ -886,7 +884,7 @@ class InstagramPlaywrightScraper:
             tmpdir = Path(tempfile.mkdtemp(prefix="ig_repair_"))
             try:
                 cmd = [
-                    "yt-dlp",
+                    sys.executable, "-m", "yt_dlp",
                     "--no-warnings",
                     "--quiet",
                     "-f", "bv*+ba/b",

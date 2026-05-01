@@ -7,6 +7,10 @@
         <h1>{{ _('dashboard.title') }}</h1>
         <p>{{ _('dashboard.subtitle') }}</p>
     </div>
+    <div class="button-row header-actions">
+        <a class="btn secondary" href="{{ url_for('accounts_view') }}">{{ _('run.add_accounts') }}</a>
+        <button type="button" class="btn ghost" onclick="resetConfig(this)">{{ _('common.reset') }}</button>
+    </div>
 </section>
 
 <section class="stats-grid" aria-label="Statistics">
@@ -14,7 +18,6 @@
     <div class="stat-card"><span>{{ _('stats.instagram') }}</span><strong>{{ stats.instagram }}</strong></div>
     <div class="stat-card"><span>{{ _('stats.tiktok') }}</span><strong>{{ stats.tiktok }}</strong></div>
     <div class="stat-card"><span>{{ _('stats.accounts') }}</span><strong>{{ stats.accounts }}</strong></div>
-    <div class="stat-card"><span>{{ _('stats.categories') }}</span><strong>{{ stats.categories }}</strong></div>
     <div class="stat-card"><span>{{ _('stats.media') }}</span><strong>{{ stats.media }}</strong></div>
 </section>
 
@@ -31,19 +34,23 @@
             <label class="form-field">
                 <span>{{ _('run.platform') }}</span>
                 <select id="run-platform" class="input">
-                    <option value="all">{{ _('common.all') }}</option>
+                    <option value="all">Instagram + TikTok</option>
                     <option value="instagram">Instagram</option>
                     <option value="tiktok">TikTok</option>
                 </select>
             </label>
             <label class="form-field">
-                <span>{{ _('run.category') }}</span>
-                <select id="run-category" class="input">
-                    <option value="all">{{ _('common.all') }}</option>
-                    {% for category in categories %}
-                    <option value="{{ category }}">{{ category }}</option>
-                    {% endfor %}
+                <span>{{ _('run.max_posts') }}</span>
+                <select id="run-limit-mode" class="input" onchange="toggleCustomLimit()">
+                    <option value="200">{{ _('run.limit_recommended') }}</option>
+                    <option value="50">{{ _('run.limit_50') }}</option>
+                    <option value="0">{{ _('run.limit_all') }}</option>
+                    <option value="custom">{{ _('run.limit_custom') }}</option>
                 </select>
+            </label>
+            <label class="form-field hidden" id="custom-limit-field">
+                <span>{{ _('run.max_posts') }}</span>
+                <input id="run-max-posts" class="input" type="number" min="1" step="1" placeholder="200">
             </label>
             <label class="form-field">
                 <span>{{ _('common.start_date') }}</span>
@@ -53,19 +60,17 @@
                 <span>{{ _('common.end_date') }}</span>
                 <input id="run-end" class="input" type="date" value="{{ study_period.end }}">
             </label>
-            <label class="form-field">
-                <span>{{ _('run.max_posts') }}</span>
-                <input id="run-max-posts" class="input" type="number" min="1" step="1" placeholder="200">
-            </label>
         </div>
 
         <div class="account-picker">
             <div class="field-header">
                 <span>{{ _('run.accounts') }}</span>
+                {% if accounts %}
                 <div class="button-row compact">
                     <button type="button" class="btn secondary" onclick="toggleRunAccounts(true)">{{ _('run.select_all') }}</button>
                     <button type="button" class="btn secondary" onclick="toggleRunAccounts(false)">{{ _('run.select_none') }}</button>
                 </div>
+                {% endif %}
             </div>
             <div class="account-choice-grid">
                 {% for account in accounts %}
@@ -73,24 +78,30 @@
                     <input type="checkbox" class="run-account" checked data-instagram="{{ account.instagram }}" data-tiktok="{{ account.tiktok }}">
                     <span>
                         <strong>{{ account.account_name }}</strong>
-                        <small>{{ account.category or _('common.optional') }}</small>
-                        <small>{% if account.instagram %}@{{ account.instagram }}{% endif %}{% if account.instagram and account.tiktok %} / {% endif %}{% if account.tiktok %}@{{ account.tiktok }}{% endif %}</small>
+                        <small>{% if account.instagram %}Instagram: @{{ account.instagram }}{% endif %}{% if account.instagram and account.tiktok %} / {% endif %}{% if account.tiktok %}TikTok: @{{ account.tiktok }}{% endif %}</small>
+                        {% if account.category %}<small>{{ account.category }}</small>{% endif %}
                     </span>
                 </label>
                 {% else %}
-                <div class="empty-state">{{ _('accounts.empty') }}</div>
+                <div class="empty-state with-action">
+                    <span>{{ _('run.no_accounts') }}</span>
+                    <a class="btn primary" href="{{ url_for('accounts_view') }}">{{ _('run.add_accounts') }}</a>
+                </div>
                 {% endfor %}
             </div>
         </div>
 
-        <div class="options-row">
-            <label><input id="run-download-media" type="checkbox" checked> {{ _('run.download_media') }}</label>
-            <label><input id="run-take-screenshots" type="checkbox" checked> {{ _('run.take_screenshots') }}</label>
-            <label><input id="run-export-after" type="checkbox" checked> {{ _('run.export_after') }}</label>
-        </div>
+        <details class="advanced-block">
+            <summary>{{ _('common.advanced') }}</summary>
+            <div class="options-row">
+                <label><input id="run-download-media" type="checkbox" checked> {{ _('run.download_media') }}</label>
+                <label><input id="run-take-screenshots" type="checkbox" checked> {{ _('run.take_screenshots') }}</label>
+                <label><input id="run-export-after" type="checkbox" checked> {{ _('run.export_after') }}</label>
+            </div>
+        </details>
 
         <div class="button-row">
-            <button type="button" class="btn primary" onclick="launchScrape(this)">{{ _('run.start') }}</button>
+            <button type="button" class="btn primary" onclick="launchScrape(this)" {% if not accounts %}disabled{% endif %}>{{ _('run.start') }}</button>
             <button type="button" class="btn secondary" onclick="launchScreenshots(this)">{{ _('run.screenshots_only') }}</button>
             <button type="button" class="btn secondary" onclick="exportCSV(this)">{{ _('run.export_csv') }}</button>
             <a class="btn ghost" href="{{ url_for('download_csv') }}">{{ _('run.download_csv') }}</a>
@@ -110,12 +121,23 @@
                     <strong>{{ tiktok_cookie.message }}</strong>
                 </div>
             </div>
+            <div class="button-row compact">
+                <a class="btn secondary" href="{{ url_for('cookies_view') }}">{{ _('cookies.title') }}</a>
+            </div>
         </div>
 
         <div class="panel small-panel" id="task-panel">
             <h2>{{ _('task.title') }}</h2>
             <div id="task-status" class="task-status idle">{{ _('task.waiting') }}</div>
-            <div id="task-log" class="task-log"></div>
+            <div id="task-log" class="task-log empty">{{ _('task.empty_log') }}</div>
+        </div>
+
+        <div class="panel small-panel">
+            <h2>{{ _('common.reset') }}</h2>
+            <div class="button-row reset-actions">
+                <button type="button" class="btn secondary" onclick="resetConfig(this)">{{ _('common.reset') }}</button>
+                <button type="button" class="btn danger" onclick="clearDownloadedData(this)">{{ _('common.clear_data') }}</button>
+            </div>
         </div>
     </div>
 </section>

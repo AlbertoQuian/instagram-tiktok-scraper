@@ -70,6 +70,7 @@ function watchTask(taskId, button) {
 
     panel.classList.add('active');
     logElement.textContent = '';
+    logElement.classList.remove('empty');
     statusElement.className = 'task-status running';
     statusElement.textContent = uiText('running');
     let renderedLines = 0;
@@ -109,6 +110,19 @@ function watchTask(taskId, button) {
     }, 1200);
 }
 
+function toggleCustomLimit() {
+    const mode = document.getElementById('run-limit-mode')?.value || '200';
+    const field = document.getElementById('custom-limit-field');
+    if (!field) return;
+    field.classList.toggle('hidden', mode !== 'custom');
+}
+
+function getRunLimit() {
+    const mode = document.getElementById('run-limit-mode')?.value || '200';
+    if (mode === 'custom') return document.getElementById('run-max-posts')?.value || '';
+    return mode;
+}
+
 function selectedRunAccounts(platform) {
     const selected = [];
     document.querySelectorAll('.run-account:checked').forEach(input => {
@@ -133,10 +147,9 @@ function launchScrape(button) {
     }
     const payload = {
         platform,
-        category: document.getElementById('run-category')?.value || 'all',
         start_date: document.getElementById('run-start')?.value || '',
         end_date: document.getElementById('run-end')?.value || '',
-        max_posts: document.getElementById('run-max-posts')?.value || '',
+        max_posts: getRunLimit(),
         download_media: document.getElementById('run-download-media')?.checked !== false,
         take_screenshots: document.getElementById('run-take-screenshots')?.checked !== false,
         export_after: document.getElementById('run-export-after')?.checked !== false,
@@ -170,14 +183,35 @@ function collectAccounts() {
     document.querySelectorAll('#accounts-editor .account-row:not(.account-row-head)').forEach(row => {
         const account = {
             account_name: row.querySelector('.account-name')?.value.trim() || '',
-            account_id: row.querySelector('.account-id')?.value.trim() || '',
             category: row.querySelector('.account-category')?.value.trim() || '',
             instagram: row.querySelector('.account-instagram')?.value.trim() || '',
             tiktok: row.querySelector('.account-tiktok')?.value.trim() || '',
         };
-        if (account.account_name || account.instagram || account.tiktok) accounts.push(account);
+        if (account.instagram || account.tiktok) accounts.push(account);
     });
     return accounts;
+}
+
+function guessPlatform(value) {
+    const text = value.toLowerCase();
+    if (text.includes('tiktok.com')) return 'tiktok';
+    if (text.includes('instagram.com')) return 'instagram';
+    return 'instagram';
+}
+
+function cleanHandle(value) {
+    let text = (value || '').trim();
+    if (!text) return '';
+    try {
+        if (text.startsWith('http://') || text.startsWith('https://')) {
+            const url = new URL(text);
+            const parts = url.pathname.split('/').filter(Boolean);
+            text = parts[0] || '';
+        }
+    } catch (error) {
+        // Keep the raw text and normalize below.
+    }
+    return text.replace(/^@+/, '').trim();
 }
 
 function addAccountRow() {
@@ -187,13 +221,29 @@ function addAccountRow() {
     row.className = 'account-row';
     row.innerHTML = `
         <input class="input account-name" placeholder="${uiText('account_name_placeholder')}">
-        <input class="input account-id" placeholder="${uiText('account_id_placeholder')}">
-        <input class="input account-category" placeholder="${uiText('category_placeholder')}">
         <input class="input account-instagram" placeholder="${uiText('instagram_placeholder')}">
         <input class="input account-tiktok" placeholder="${uiText('tiktok_placeholder')}">
+        <input class="input account-category" placeholder="${uiText('category_placeholder')}">
         <button type="button" class="btn danger compact-only" onclick="removeAccountRow(this)">${uiText('remove')}</button>
     `;
     editor.appendChild(row);
+}
+
+function addBulkAccounts() {
+    const textarea = document.getElementById('bulk-accounts');
+    if (!textarea) return;
+    const lines = textarea.value.split('\n').map(line => line.trim()).filter(Boolean);
+    if (lines.length === 0) return;
+    lines.forEach(line => {
+        addAccountRow();
+        const row = document.querySelector('#accounts-editor .account-row:last-child');
+        const platform = guessPlatform(line);
+        const handle = cleanHandle(line);
+        row.querySelector('.account-name').value = handle;
+        if (platform === 'tiktok') row.querySelector('.account-tiktok').value = handle;
+        else row.querySelector('.account-instagram').value = handle;
+    });
+    textarea.value = '';
 }
 
 function removeAccountRow(button) {
@@ -209,6 +259,40 @@ function saveAccounts(button) {
             return;
         }
         showToast(result.data.message || uiText('saved'), 'success');
+    }).catch(error => {
+        restoreButton(button);
+        showToast(uiText('connection_error') + ': ' + error.message, 'error');
+    });
+}
+
+function resetConfig(button) {
+    if (!confirm(uiText('confirm_reset_config'))) return;
+    setButtonBusy(button, uiText('saving'));
+    postJSON('/api/reset/config', {}).then(result => {
+        restoreButton(button);
+        if (!result.ok || result.data.error) {
+            showToast(result.data.error || uiText('failed'), 'error');
+            return;
+        }
+        showToast(result.data.message || uiText('saved'), 'success');
+        setTimeout(() => window.location.reload(), 500);
+    }).catch(error => {
+        restoreButton(button);
+        showToast(uiText('connection_error') + ': ' + error.message, 'error');
+    });
+}
+
+function clearDownloadedData(button) {
+    if (!confirm(uiText('confirm_clear_data'))) return;
+    setButtonBusy(button, uiText('saving'));
+    postJSON('/api/reset/data', {}).then(result => {
+        restoreButton(button);
+        if (!result.ok || result.data.error) {
+            showToast(result.data.error || uiText('failed'), 'error');
+            return;
+        }
+        showToast(result.data.message || uiText('saved'), 'success');
+        setTimeout(() => window.location.reload(), 500);
     }).catch(error => {
         restoreButton(button);
         showToast(uiText('connection_error') + ': ' + error.message, 'error');
@@ -276,6 +360,26 @@ function saveTikTokCookies(button) {
             return;
         }
         showToast(result.data.message || uiText('saved'), 'success');
+    }).catch(error => {
+        restoreButton(button);
+        showToast(uiText('connection_error') + ': ' + error.message, 'error');
+    });
+}
+
+function connectCookies(platform, button) {
+    runTask('/api/cookies/connect/' + encodeURIComponent(platform), {}, button);
+}
+
+function deleteCookies(platform, button) {
+    setButtonBusy(button, uiText('saving'));
+    postJSON('/api/cookies/delete/' + encodeURIComponent(platform), {}).then(result => {
+        restoreButton(button);
+        if (!result.ok || result.data.error) {
+            showToast(result.data.error || uiText('failed'), 'error');
+            return;
+        }
+        showToast(result.data.message || uiText('saved'), 'success');
+        setTimeout(() => window.location.reload(), 500);
     }).catch(error => {
         restoreButton(button);
         showToast(uiText('connection_error') + ': ' + error.message, 'error');

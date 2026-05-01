@@ -3,13 +3,16 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import shlex
 import subprocess
 import sys
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 from uuid import uuid4
 
 from flask import (
@@ -41,10 +44,12 @@ from utils.export import collect_metadata_files, export_to_csv, parse_metadata_f
 from web.i18n import DEFAULT_LANGUAGE, LANGUAGES, translate  # noqa: E402
 
 DEFAULT_CONFIG: Dict[str, Any] = {
-    "project": "Research Project",
-    "study_period": {"start": "2024-01-01", "end": "2024-12-31"},
+    "project": "",
+    "study_period": {"start": "", "end": ""},
     "accounts": [],
 }
+
+PLACEHOLDER_PROJECT_NAMES = {"my research project", "research project", "audit smoke test"}
 
 JS_TRANSLATION_KEYS = [
     "running",
@@ -65,6 +70,10 @@ JS_TRANSLATION_KEYS = [
     "instagram_placeholder",
     "tiktok_placeholder",
     "remove",
+    "ready",
+    "confirm_reset_config",
+    "confirm_clear_data",
+    "custom_limit_placeholder",
 ]
 
 app = Flask(
@@ -108,8 +117,12 @@ def _save_config(config: Dict[str, Any]) -> None:
 def _project_name(config: Dict[str, Any]) -> str:
     project = config.get("project")
     if isinstance(project, dict):
-        return str(project.get("name") or project.get("title") or translate(g.lang, "project.default"))
-    return str(project or translate(g.lang, "project.default"))
+        value = str(project.get("name") or project.get("title") or "").strip()
+    else:
+        value = str(project or "").strip()
+    if not value or value.lower() in PLACEHOLDER_PROJECT_NAMES:
+        return translate(g.lang, "project.default")
+    return value
 
 
 def _study_period(config: Dict[str, Any]) -> Dict[str, str]:
@@ -134,7 +147,12 @@ def _normalize_platform(value: str) -> str:
 def _normalize_handle(value: Any) -> str:
     handle = str(value or "").strip()
     if handle.startswith("http://") or handle.startswith("https://"):
-        handle = handle.rstrip("/").split("/")[-1]
+        parsed = urlparse(handle)
+        parts = [part for part in parsed.path.split("/") if part]
+        if parts:
+            handle = parts[0]
+        else:
+            handle = ""
     return handle.lstrip("@").strip()
 
 
@@ -150,7 +168,7 @@ def _clean_account(raw: Dict[str, Any], index: int) -> Dict[str, str]:
     return {
         "account_name": account_name,
         "account_id": account_id,
-        "category": str(raw.get("category") or "").strip(),
+        "category": str(raw.get("category") or raw.get("label") or "").strip(),
         "instagram": instagram,
         "tiktok": tiktok,
     }
@@ -160,7 +178,14 @@ def _accounts(config: Dict[str, Any]) -> List[Dict[str, str]]:
     raw_accounts = config.get("accounts", [])
     if not isinstance(raw_accounts, list):
         return []
-    return [_clean_account(account, index) for index, account in enumerate(raw_accounts) if isinstance(account, dict)]
+    accounts = []
+    for index, account in enumerate(raw_accounts):
+        if not isinstance(account, dict):
+            continue
+        cleaned = _clean_account(account, index)
+        if cleaned["instagram"] or cleaned["tiktok"]:
+            accounts.append(cleaned)
+    return accounts
 
 
 def _categories(accounts: List[Dict[str, str]]) -> List[str]:
@@ -247,7 +272,7 @@ def _cookie_status_json(path: Path) -> Dict[str, Any]:
         return {"status": "error", "message": "JSON root must be a list", "count": 0}
     session_cookie = next((item for item in cookies if isinstance(item, dict) and item.get("name") == "sessionid"), None)
     if session_cookie:
-        expires = session_cookie.get("expires")
+        expires = session_cookie.get("expires") or session_cookie.get("expirationDate")
         if expires:
             expiry = datetime.fromtimestamp(float(expires))
             if expiry < datetime.now():
@@ -257,7 +282,8 @@ def _cookie_status_json(path: Path) -> Dict[str, Any]:
                     "message_kwargs": {"date": expiry.strftime("%Y-%m-%d %H:%M")},
                     "count": len(cookies),
                 }
-    return {"status": "valid", "message_key": "cookies.valid", "count": len(cookies)}
+        return {"status": "valid", "message_key": "cookies.valid", "count": len(cookies)}
+    return {"status": "unknown", "message_key": "cookies.no_session", "count": len(cookies)}
 
 
 def _cookie_status_text(path: Path) -> Dict[str, Any]:
@@ -276,6 +302,94 @@ def _translated_status(status: Dict[str, Any]) -> Dict[str, Any]:
     if key:
         item["message"] = translate(g.lang, key, **item.get("message_kwargs", {}))
     return item
+
+
+def _normalize_playwright_cookies(cookies: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    allowed = {"name", "value", "domain", "path", "expires", "httpOnly", "secure", "sameSite"}
+    same_site_map = {"no_restriction": "None", "lax": "Lax", "strict": "Strict", "none": "None"}
+    normalized = []
+    for cookie in cookies:
+        if not isinstance(cookie, dict) or not cookie.get("name") or "value" not in cookie:
+            continue
+        item = {key: cookie[key] for key in allowed if key in cookie}
+        if "expires" not in item and cookie.get("expirationDate"):
+            item["expires"] = cookie["expirationDate"]
+        item.setdefault("domain", cookie.get("domain", ""))
+        item.setdefault("path", cookie.get("path", "/"))
+        raw_same_site = str(item.get("sameSite") or "None").lower()
+        item["sameSite"] = same_site_map.get(raw_same_site, "None")
+        normalized.append(item)
+    return normalized
+
+
+def _write_netscape_cookies(cookies: List[Dict[str, Any]], path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write("# Netscape HTTP Cookie File\n")
+        for cookie in cookies:
+            domain = str(cookie.get("domain") or "")
+            if not domain:
+                continue
+            include_subdomains = "TRUE" if domain.startswith(".") else "FALSE"
+            cookie_path = str(cookie.get("path") or "/")
+            secure = "TRUE" if cookie.get("secure") else "FALSE"
+            expires = int(cookie.get("expires") or cookie.get("expirationDate") or 2147483647)
+            name = str(cookie.get("name") or "")
+            value = str(cookie.get("value") or "")
+            handle.write(
+                f"{domain}\t{include_subdomains}\t{cookie_path}\t{secure}\t{expires}\t{name}\t{value}\n"
+            )
+
+
+def _capture_browser_cookies(task_id: str, platform: str, language: str) -> None:
+    try:
+        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+        from playwright.sync_api import sync_playwright
+    except Exception as exc:
+        _update_task(task_id, status="failed", error=str(exc))
+        _append_log(task_id, str(exc))
+        return
+
+    login_url = "https://www.instagram.com/" if platform == "instagram" else "https://www.tiktok.com/"
+    cookie_name = "sessionid" if platform == "instagram" else "tt_chain_token"
+    _append_log(task_id, translate(language, "cookies.browser_opening", platform=platform.title()))
+    try:
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=False)
+            context = browser.new_context()
+            page = context.new_page()
+            page.goto(login_url, wait_until="domcontentloaded", timeout=60_000)
+            deadline = time.time() + 300
+            saved = False
+            while time.time() < deadline:
+                cookies = context.cookies()
+                has_cookie = any(cookie.get("name") == cookie_name for cookie in cookies)
+                if has_cookie or (platform == "tiktok" and len(cookies) > 3):
+                    if platform == "instagram":
+                        path = Path(INSTAGRAM_SETTINGS["cookies_path"])
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        with open(path, "w", encoding="utf-8") as handle:
+                            json.dump(_normalize_playwright_cookies(cookies), handle, indent=2, ensure_ascii=False)
+                            handle.write("\n")
+                    else:
+                        _write_netscape_cookies(cookies, Path(TIKTOK_SETTINGS["cookies_path"]))
+                    saved = True
+                    break
+                page.wait_for_timeout(2000)
+            browser.close()
+            if saved:
+                _append_log(task_id, translate(language, "cookies.browser_saved"))
+                _update_task(task_id, status="completed")
+            else:
+                message = translate(language, "cookies.browser_timeout")
+                _append_log(task_id, message)
+                _update_task(task_id, status="failed", error=message)
+    except PlaywrightTimeoutError as exc:
+        _update_task(task_id, status="failed", error=str(exc))
+        _append_log(task_id, str(exc))
+    except Exception as exc:
+        _update_task(task_id, status="failed", error=str(exc))
+        _append_log(task_id, str(exc))
 
 
 def _new_task(name: str) -> str:
@@ -502,31 +616,24 @@ def accounts_view() -> str:
 @app.route("/settings")
 def settings_view() -> str:
     config = _load_config()
-    return render_template("settings.html", project_name_value=_project_name(config), study_period=_study_period(config))
+    project = config.get("project")
+    if isinstance(project, dict):
+        project_value = str(project.get("name") or project.get("title") or "")
+    else:
+        project_value = str(project or "")
+    if project_value.lower() in PLACEHOLDER_PROJECT_NAMES:
+        project_value = ""
+    return render_template("settings.html", project_name_value=project_value, study_period=_study_period(config))
 
 
 @app.route("/cookies")
 def cookies_view() -> str:
     instagram_path = Path(INSTAGRAM_SETTINGS["cookies_path"])
     tiktok_path = Path(TIKTOK_SETTINGS["cookies_path"])
-    instagram_preview = ""
-    tiktok_preview = ""
-    if instagram_path.exists():
-        try:
-            instagram_preview = instagram_path.read_text(encoding="utf-8")
-        except OSError:
-            instagram_preview = ""
-    if tiktok_path.exists():
-        try:
-            tiktok_preview = tiktok_path.read_text(encoding="utf-8")
-        except OSError:
-            tiktok_preview = ""
     return render_template(
         "cookies.html",
         instagram_cookie=_translated_status(_cookie_status_json(instagram_path)),
         tiktok_cookie=_translated_status(_cookie_status_text(tiktok_path)),
-        instagram_preview=instagram_preview,
-        tiktok_preview=tiktok_preview,
     )
 
 
@@ -537,9 +644,25 @@ def update_project_settings() -> Response:
     project = str(data.get("project") or "").strip()
     start = str(data.get("start") or "").strip()
     end = str(data.get("end") or "").strip()
-    config["project"] = project or DEFAULT_CONFIG["project"]
+    config["project"] = project
     config["study_period"] = {"start": start, "end": end}
     _save_config(config)
+    return jsonify({"success": True, "message": translate(g.lang, "js.saved")})
+
+
+@app.route("/api/reset/config", methods=["POST"])
+def reset_config() -> Response:
+    _save_config(_clone_default_config())
+    return jsonify({"success": True, "message": translate(g.lang, "js.saved")})
+
+
+@app.route("/api/reset/data", methods=["POST"])
+def reset_data() -> Response:
+    if RAW_DIR.exists():
+        shutil.rmtree(RAW_DIR)
+    exports_dir = Path(EXPORT_SETTINGS["output_dir"])
+    if exports_dir.exists():
+        shutil.rmtree(exports_dir)
     return jsonify({"success": True, "message": translate(g.lang, "js.saved")})
 
 
@@ -554,7 +677,7 @@ def update_accounts_settings() -> Response:
         if not isinstance(raw, dict):
             continue
         cleaned = _clean_account(raw, index)
-        if cleaned["instagram"] or cleaned["tiktok"] or cleaned["account_name"]:
+        if cleaned["instagram"] or cleaned["tiktok"]:
             accounts.append(cleaned)
     config = _load_config()
     config["accounts"] = accounts
@@ -573,6 +696,9 @@ def update_instagram_cookies() -> Response:
     except json.JSONDecodeError:
         return jsonify({"error": translate(g.lang, "js.invalid_json")}), 400
     if not isinstance(parsed, list):
+        return jsonify({"error": translate(g.lang, "js.invalid_json")}), 400
+    parsed = _normalize_playwright_cookies(parsed)
+    if not parsed:
         return jsonify({"error": translate(g.lang, "js.invalid_json")}), 400
     path = Path(INSTAGRAM_SETTINGS["cookies_path"])
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -594,12 +720,38 @@ def update_tiktok_cookies() -> Response:
     return jsonify({"success": True, "message": translate(g.lang, "js.saved")})
 
 
+@app.route("/api/cookies/connect/<platform>", methods=["POST"])
+def connect_cookies(platform: str) -> Response:
+    if platform not in {"instagram", "tiktok"}:
+        return jsonify({"error": "Invalid platform"}), 400
+    task_id = _new_task(f"connect-{platform}")
+    thread = threading.Thread(target=_capture_browser_cookies, args=(task_id, platform, g.lang), daemon=True)
+    thread.start()
+    return jsonify({"task_id": task_id})
+
+
+@app.route("/api/cookies/delete/<platform>", methods=["POST"])
+def delete_cookies(platform: str) -> Response:
+    paths = {
+        "instagram": Path(INSTAGRAM_SETTINGS["cookies_path"]),
+        "tiktok": Path(TIKTOK_SETTINGS["cookies_path"]),
+    }
+    path = paths.get(platform)
+    if path is None:
+        return jsonify({"error": "Invalid platform"}), 400
+    if path.exists():
+        path.unlink()
+    return jsonify({"success": True, "message": translate(g.lang, "js.saved")})
+
+
 @app.route("/api/run/scrape", methods=["POST"])
 def run_scrape() -> Response:
     data = request.get_json(silent=True) or {}
     platform = str(data.get("platform") or "all").lower()
     if platform not in {"all", "instagram", "tiktok"}:
         return jsonify({"error": translate(g.lang, "js.select_platform")}), 400
+    if not _accounts(_load_config()):
+        return jsonify({"error": translate(g.lang, "js.select_account")}), 400
     command = [sys.executable, str(BASE_DIR / "main.py"), "--platform", platform]
     category = str(data.get("category") or "all")
     if category and category != "all":
@@ -607,10 +759,8 @@ def run_scrape() -> Response:
     start_date = str(data.get("start_date") or "").strip()
     end_date = str(data.get("end_date") or "").strip()
     max_posts = str(data.get("max_posts") or "").strip()
-    if start_date:
-        command.extend(["--start-date", start_date])
-    if end_date:
-        command.extend(["--end-date", end_date])
+    command.extend(["--start-date", start_date or "1970-01-01"])
+    command.extend(["--end-date", end_date or datetime.now().strftime("%Y-%m-%d")])
     if max_posts:
         command.extend(["--max-posts", max_posts])
     if not data.get("download_media", True):
