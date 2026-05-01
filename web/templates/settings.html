@@ -22,26 +22,18 @@
             <input id="settings-project" class="input" type="text" value="{{ project_name_value }}">
         </label>
         <div class="form-field wide field-note">
-            <strong>{{ _('settings.period_section') }}</strong>
-            <span>{{ _('settings.period_help') }}</span>
-        </div>
-        <label class="form-field">
-            <span>{{ _('common.start_date') }}</span>
-            <input id="settings-start" class="input" type="date" value="{{ study_period.start }}">
-        </label>
-        <label class="form-field">
-            <span>{{ _('common.end_date') }}</span>
-            <input id="settings-end" class="input" type="date" value="{{ study_period.end }}">
-        </label>
-        <div class="form-field wide field-note">
             <strong>{{ _('settings.storage_section') }}</strong>
             <span>{{ _('settings.storage_help') }}</span>
         </div>
-        <label class="form-field wide">
+        <div class="form-field wide">
             <span>{{ _('settings.data_dir') }}</span>
-            <input id="settings-data-dir" class="input" type="text" value="{{ storage.data_dir }}" placeholder="{{ default_data_dir }}">
+            <div class="path-picker">
+                <input id="settings-data-dir" class="input" type="text" value="{{ storage.data_dir }}" placeholder="{{ default_data_dir }}">
+                <button type="button" class="btn secondary" onclick="chooseDataFolder(this)">{{ _('settings.choose_folder') }}</button>
+            </div>
             <small>{{ _('settings.data_dir_effective', path=effective_data_dir) }}</small>
-        </label>
+            <small>{{ _('settings.data_dir_hint') }}</small>
+        </div>
     </div>
     <div class="button-row form-actions">
         <button type="button" class="btn primary" onclick="saveProjectSettings(this)">{{ _('settings.save') }}</button>

@@ -152,7 +152,8 @@ stored in a subdirectory named after the label.
 
 The optional `storage.data_dir` field controls where scraped metadata, media,
 screenshots, and CSV files are saved. Leave it blank to use the repository's
-git-ignored `data/` directory. In the GUI, this is configured from **Settings**.
+git-ignored `data/` directory. In the GUI, open **Settings** and either paste a
+folder path or use **Choose folder** to load it.
 
 ### Instagram Session Cookies
 
@@ -221,7 +222,7 @@ python run_web.py
 
 Then open <http://127.0.0.1:5000>. The interface starts blank: add profiles by
 pasting URLs or handles, switch between Spanish and English, connect sessions
-when needed, choose where local results are saved, launch scraping jobs,
+when needed, choose the local folder where results are saved, launch scraping jobs,
 monitor logs, browse collected data, reset the local setup, and export the
 consolidated CSV.
 

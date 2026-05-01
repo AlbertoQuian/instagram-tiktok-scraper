@@ -418,6 +418,13 @@ a:hover {
     font-weight: 500;
 }
 
+.path-picker {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+}
+
 .field-note {
     padding: 10px 0 0;
 }
@@ -1008,7 +1015,8 @@ textarea.input {
     .form-grid,
     .settings-grid,
     .account-row,
-    .guide-list {
+    .guide-list,
+    .path-picker {
         grid-template-columns: 1fr;
     }
 

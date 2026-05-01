@@ -302,8 +302,6 @@ function clearDownloadedData(button) {
 function saveProjectSettings(button) {
     const payload = {
         project: document.getElementById('settings-project')?.value || '',
-        start: document.getElementById('settings-start')?.value || '',
-        end: document.getElementById('settings-end')?.value || '',
         data_dir: document.getElementById('settings-data-dir')?.value || '',
     };
     setButtonBusy(button, uiText('saving'));
@@ -315,6 +313,27 @@ function saveProjectSettings(button) {
         }
         showToast(result.data.message || uiText('saved'), 'success');
         setTimeout(() => window.location.reload(), 500);
+    }).catch(error => {
+        restoreButton(button);
+        showToast(uiText('connection_error') + ': ' + error.message, 'error');
+    });
+}
+
+function chooseDataFolder(button) {
+    setButtonBusy(button, uiText('choosing_folder'));
+    postJSON('/api/settings/choose-data-dir', {}).then(result => {
+        restoreButton(button);
+        if (!result.ok || result.data.error) {
+            showToast(result.data.error || uiText('failed'), 'error');
+            return;
+        }
+        if (result.data.cancelled) {
+            showToast(result.data.message || uiText('folder_picker_cancelled'), 'info');
+            return;
+        }
+        const input = document.getElementById('settings-data-dir');
+        if (input && result.data.path) input.value = result.data.path;
+        showToast(result.data.message || uiText('folder_loaded'), 'success');
     }).catch(error => {
         restoreButton(button);
         showToast(uiText('connection_error') + ': ' + error.message, 'error');

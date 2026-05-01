@@ -74,6 +74,9 @@ JS_TRANSLATION_KEYS = [
     "confirm_reset_config",
     "confirm_clear_data",
     "custom_limit_placeholder",
+    "choosing_folder",
+    "folder_loaded",
+    "folder_picker_cancelled",
 ]
 
 app = Flask(
@@ -149,6 +152,111 @@ def _scraper_env(config: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
     env = os.environ.copy()
     env["SCRAPER_DATA_DIR"] = str(_configured_data_dir(config))
     return env
+
+
+def _directory_picker_result(path: str, language: str) -> Dict[str, Any]:
+    selected = str(path or "").strip()
+    if not selected:
+        return {"cancelled": True, "message": translate(language, "js.folder_picker_cancelled")}
+    return {
+        "success": True,
+        "path": str(Path(selected).expanduser().resolve()),
+        "message": translate(language, "js.folder_loaded"),
+    }
+
+
+def _choose_directory_macos(language: str) -> Dict[str, Any]:
+    prompt = translate(language, "settings.folder_picker_prompt")
+    script = f"POSIX path of (choose folder with prompt {json.dumps(prompt, ensure_ascii=False)})"
+    result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=600)
+    if result.returncode == 0:
+        return _directory_picker_result(result.stdout, language)
+    stderr = result.stderr.strip()
+    if "User canceled" in stderr or "-128" in stderr:
+        return {"cancelled": True, "message": translate(language, "js.folder_picker_cancelled")}
+    return {"error": stderr or translate(language, "settings.folder_picker_unavailable")}
+
+
+def _choose_directory_windows(language: str) -> Dict[str, Any]:
+    executable = shutil.which("powershell") or shutil.which("powershell.exe") or shutil.which("pwsh")
+    if not executable:
+        return {"error": "PowerShell not found"}
+    prompt = translate(language, "settings.folder_picker_prompt").replace("'", "''")
+    script = (
+        "Add-Type -AssemblyName System.Windows.Forms; "
+        "$dialog = New-Object System.Windows.Forms.FolderBrowserDialog; "
+        f"$dialog.Description = '{prompt}'; "
+        "$dialog.ShowNewFolderButton = $true; "
+        "if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { "
+        "Write-Output $dialog.SelectedPath }"
+    )
+    result = subprocess.run([executable, "-NoProfile", "-Command", script], capture_output=True, text=True, timeout=600)
+    if result.returncode == 0:
+        return _directory_picker_result(result.stdout, language)
+    return {"error": result.stderr.strip() or translate(language, "settings.folder_picker_unavailable")}
+
+
+def _choose_directory_linux(language: str) -> Dict[str, Any]:
+    prompt = translate(language, "settings.folder_picker_prompt")
+    for command in ("zenity", "kdialog"):
+        executable = shutil.which(command)
+        if not executable:
+            continue
+        args = [executable, "--file-selection", "--directory", "--title", prompt]
+        if command == "kdialog":
+            args = [executable, "--getexistingdirectory", str(Path.home()), "--title", prompt]
+        result = subprocess.run(args, capture_output=True, text=True, timeout=600)
+        if result.returncode == 0:
+            return _directory_picker_result(result.stdout, language)
+        if result.returncode in {1, 130}:
+            return {"cancelled": True, "message": translate(language, "js.folder_picker_cancelled")}
+    return {"error": "No Linux directory picker found"}
+
+
+def _choose_directory_tk(language: str) -> Dict[str, Any]:
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+    except Exception as exc:
+        return {"error": str(exc)}
+
+    root = None
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        selected = filedialog.askdirectory(title=translate(language, "settings.folder_picker_prompt"))
+        return _directory_picker_result(selected, language)
+    except Exception as exc:
+        return {"error": str(exc)}
+    finally:
+        if root is not None:
+            root.destroy()
+
+
+def _choose_data_directory(language: str) -> Dict[str, Any]:
+    attempts = []
+    if sys.platform == "darwin" and shutil.which("osascript"):
+        attempts.append(_choose_directory_macos)
+    elif os.name == "nt":
+        attempts.append(_choose_directory_windows)
+    elif sys.platform.startswith("linux"):
+        attempts.append(_choose_directory_linux)
+    attempts.append(_choose_directory_tk)
+
+    last_error = ""
+    for attempt in attempts:
+        try:
+            result = attempt(language)
+        except Exception as exc:
+            result = {"error": str(exc)}
+        if result.get("success") or result.get("cancelled"):
+            return result
+        last_error = str(result.get("error") or last_error)
+    message = translate(language, "settings.folder_picker_unavailable")
+    if last_error:
+        message = f"{message}: {last_error}"
+    return {"error": message}
 
 
 def _project_name(config: Dict[str, Any]) -> str:
@@ -671,7 +779,6 @@ def settings_view() -> str:
     return render_template(
         "settings.html",
         project_name_value=project_value,
-        study_period=_study_period(config),
         storage=_storage_settings(config),
         default_data_dir=str(DATA_DIR.resolve()),
         effective_data_dir=str(_configured_data_dir(config)),
@@ -694,14 +801,18 @@ def update_project_settings() -> Response:
     data = request.get_json(silent=True) or {}
     config = _load_config()
     project = str(data.get("project") or "").strip()
-    start = str(data.get("start") or "").strip()
-    end = str(data.get("end") or "").strip()
     data_dir = str(data.get("data_dir") or "").strip()
     config["project"] = project
-    config["study_period"] = {"start": start, "end": end}
     config["storage"] = {"data_dir": data_dir}
     _save_config(config)
     return jsonify({"success": True, "message": translate(g.lang, "js.saved")})
+
+
+@app.route("/api/settings/choose-data-dir", methods=["POST"])
+def choose_data_dir() -> Response:
+    result = _choose_data_directory(g.lang)
+    status = 500 if result.get("error") else 200
+    return jsonify(result), status
 
 
 @app.route("/api/reset/config", methods=["POST"])
