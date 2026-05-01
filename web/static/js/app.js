@@ -93,11 +93,18 @@ function watchTask(taskId, button) {
                     statusElement.className = 'task-status completed';
                     statusElement.textContent = uiText('completed');
                     restoreButton(button);
+                    if (button?.dataset.reloadOnComplete === 'true') {
+                        delete button.dataset.reloadOnComplete;
+                        setTimeout(() => window.location.reload(), 700);
+                    }
                 } else if (task.status === 'failed') {
                     clearInterval(interval);
                     statusElement.className = 'task-status failed';
                     statusElement.textContent = uiText('failed') + (task.error ? ': ' + task.error : '');
                     restoreButton(button);
+                    if (button?.dataset.reloadOnComplete === 'true') {
+                        delete button.dataset.reloadOnComplete;
+                    }
                 }
             })
             .catch(error => {
@@ -440,6 +447,7 @@ function saveInstagramCookies(button) {
             return;
         }
         showToast(result.data.message || uiText('saved'), 'success');
+        setTimeout(() => window.location.reload(), 500);
     }).catch(error => {
         restoreButton(button);
         showToast(uiText('connection_error') + ': ' + error.message, 'error');
@@ -460,6 +468,7 @@ function saveTikTokCookies(button) {
             return;
         }
         showToast(result.data.message || uiText('saved'), 'success');
+        setTimeout(() => window.location.reload(), 500);
     }).catch(error => {
         restoreButton(button);
         showToast(uiText('connection_error') + ': ' + error.message, 'error');
@@ -467,6 +476,7 @@ function saveTikTokCookies(button) {
 }
 
 function connectCookies(platform, button) {
+    if (button) button.dataset.reloadOnComplete = 'true';
     runTask('/api/cookies/connect/' + encodeURIComponent(platform), {}, button);
 }
 
