@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}{{ _('guide.page_title') }} - {{ project_name }}{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div>
+        <h1>{{ _('guide.page_title') }}</h1>
+        <p>{{ _('guide.page_subtitle') }}</p>
+    </div>
+    <div class="button-row header-actions">
+        <a class="btn primary" href="{{ url_for('accounts_view') }}">{{ _('run.add_accounts') }}</a>
+        <a class="btn secondary" href="{{ url_for('index') }}">{{ _('nav.dashboard') }}</a>
+    </div>
+</section>
+
+<section class="guide-page-grid">
+    <div class="panel guide-section">
+        <h2>{{ _('guide.workflow_title') }}</h2>
+        <ol class="guide-steps">
+            <li>
+                <strong>{{ _('guide.workflow_1_title') }}</strong>
+                <p>{{ _('guide.workflow_1_text') }}</p>
+            </li>
+            <li>
+                <strong>{{ _('guide.workflow_2_title') }}</strong>
+                <p>{{ _('guide.workflow_2_text') }}</p>
+            </li>
+            <li>
+                <strong>{{ _('guide.workflow_3_title') }}</strong>
+                <p>{{ _('guide.workflow_3_text') }}</p>
+            </li>
+            <li>
+                <strong>{{ _('guide.workflow_4_title') }}</strong>
+                <p>{{ _('guide.workflow_4_text') }}</p>
+            </li>
+            <li>
+                <strong>{{ _('guide.workflow_5_title') }}</strong>
+                <p>{{ _('guide.workflow_5_text') }}</p>
+            </li>
+        </ol>
+    </div>
+
+    <div class="panel guide-section">
+        <h2>{{ _('guide.sessions_title') }}</h2>
+        <div class="guide-note-list">
+            <div>
+                <strong>{{ _('guide.sessions_instagram_title') }}</strong>
+                <p>{{ _('guide.sessions_instagram_text') }}</p>
+            </div>
+            <div>
+                <strong>{{ _('guide.sessions_tiktok_title') }}</strong>
+                <p>{{ _('guide.sessions_tiktok_text') }}</p>
+            </div>
+            <div>
+                <strong>{{ _('guide.sessions_saved_title') }}</strong>
+                <p>{{ _('guide.sessions_saved_text') }}</p>
+            </div>
+            <div>
+                <strong>{{ _('guide.sessions_manual_title') }}</strong>
+                <p>{{ _('guide.sessions_manual_text') }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel guide-section">
+        <h2>{{ _('guide.results_title') }}</h2>
+        <div class="guide-note-list">
+            <div>
+                <strong>{{ _('guide.results_data_title') }}</strong>
+                <p>{{ _('guide.results_data_text') }}</p>
+            </div>
+            <div>
+                <strong>{{ _('guide.results_csv_title') }}</strong>
+                <p>{{ _('guide.results_csv_text') }}</p>
+            </div>
+            <div>
+                <strong>{{ _('guide.results_reset_title') }}</strong>
+                <p>{{ _('guide.results_reset_text') }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel guide-section">
+        <h2>{{ _('guide.good_practice_title') }}</h2>
+        <div class="guide-note-list">
+            <div>
+                <strong>{{ _('guide.good_practice_public_title') }}</strong>
+                <p>{{ _('guide.good_practice_public_text') }}</p>
+            </div>
+            <div>
+                <strong>{{ _('guide.good_practice_limits_title') }}</strong>
+                <p>{{ _('guide.good_practice_limits_text') }}</p>
+            </div>
+            <div>
+                <strong>{{ _('guide.good_practice_security_title') }}</strong>
+                <p>{{ _('guide.good_practice_security_text') }}</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

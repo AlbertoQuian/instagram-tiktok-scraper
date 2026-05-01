@@ -288,7 +288,7 @@ def _cookie_status_json(path: Path) -> Dict[str, Any]:
 
 def _cookie_status_text(path: Path) -> Dict[str, Any]:
     if not path.exists():
-        return {"status": "missing", "message_key": "cookies.missing", "count": 0}
+        return {"status": "missing", "message_key": "cookies.optional_missing", "count": 0}
     try:
         lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line and not line.startswith("#")]
     except OSError as exc:
@@ -552,6 +552,11 @@ def index() -> str:
         tiktok_cookie=_translated_status(_cookie_status_text(Path(TIKTOK_SETTINGS["cookies_path"]))),
         csv_path=EXPORT_SETTINGS["output_dir"] / EXPORT_SETTINGS["filename"],
     )
+
+
+@app.route("/guide")
+def guide_view() -> str:
+    return render_template("guide.html")
 
 
 @app.route("/data")

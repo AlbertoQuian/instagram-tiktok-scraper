@@ -28,12 +28,14 @@
             <h2>{{ _('cookies.instagram') }}</h2>
             <span class="status-pill {{ instagram_cookie.status }}">{{ instagram_cookie.message }}</span>
         </div>
+        <p class="platform-note">{{ _('cookies.instagram_note') }}</p>
         <div class="button-row">
             <button type="button" class="btn primary" onclick="connectCookies('instagram', this)">{{ _('cookies.connect_instagram') }}</button>
             <button type="button" class="btn danger" onclick="deleteCookies('instagram', this)">{{ _('cookies.delete_instagram') }}</button>
         </div>
         <details class="advanced-block">
             <summary>{{ _('cookies.advanced_import') }}</summary>
+            <p class="helper-text">{{ _('cookies.manual_instagram_help') }}</p>
             <label class="form-field">
                 <span>{{ _('cookies.paste_json') }}</span>
                 <textarea id="instagram-cookies" class="input code-input secret-input" rows="10" spellcheck="false"></textarea>
@@ -49,12 +51,14 @@
             <h2>{{ _('cookies.tiktok') }}</h2>
             <span class="status-pill {{ tiktok_cookie.status }}">{{ tiktok_cookie.message }}</span>
         </div>
+        <p class="platform-note">{{ _('cookies.tiktok_note') }}</p>
         <div class="button-row">
-            <button type="button" class="btn primary" onclick="connectCookies('tiktok', this)">{{ _('cookies.connect_tiktok') }}</button>
+            <button type="button" class="btn secondary" onclick="connectCookies('tiktok', this)">{{ _('cookies.connect_tiktok') }}</button>
             <button type="button" class="btn danger" onclick="deleteCookies('tiktok', this)">{{ _('cookies.delete_tiktok') }}</button>
         </div>
         <details class="advanced-block">
             <summary>{{ _('cookies.advanced_import') }}</summary>
+            <p class="helper-text">{{ _('cookies.manual_tiktok_help') }}</p>
             <label class="form-field">
                 <span>{{ _('cookies.paste_text') }}</span>
                 <textarea id="tiktok-cookies" class="input code-input secret-input" rows="10" spellcheck="false"></textarea>

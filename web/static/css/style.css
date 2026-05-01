@@ -209,6 +209,10 @@ a:hover {
     margin-bottom: 18px;
 }
 
+.guide-action {
+    justify-content: flex-end;
+}
+
 .guide-list {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -258,6 +262,50 @@ a:hover {
     color: var(--muted);
     font-size: 0.9rem;
     line-height: 1.4;
+}
+
+.guide-page-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.guide-section h2 {
+    margin: 0 0 14px;
+    font-size: 1.1rem;
+}
+
+.guide-steps,
+.guide-note-list {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+}
+
+.guide-steps {
+    list-style-position: inside;
+}
+
+.guide-steps li,
+.guide-note-list > div {
+    padding: 13px;
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    background: #fbfcfd;
+}
+
+.guide-steps strong,
+.guide-note-list strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.guide-steps p,
+.guide-note-list p {
+    margin: 0;
+    color: var(--muted);
 }
 
 .stat-card {
@@ -659,6 +707,17 @@ textarea.input {
     margin: 0;
 }
 
+.platform-note,
+.helper-text {
+    margin: 0 0 12px;
+    color: var(--muted);
+}
+
+.helper-text {
+    margin-top: 12px;
+    font-size: 0.92rem;
+}
+
 .access-panel {
     margin-bottom: 18px;
     box-shadow: none;
@@ -853,7 +912,8 @@ textarea.input {
 
 @media (max-width: 1080px) {
     .two-columns,
-    .filter-grid {
+    .filter-grid,
+    .guide-page-grid {
         grid-template-columns: 1fr;
     }
 
