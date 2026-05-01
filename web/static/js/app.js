@@ -111,19 +111,19 @@ function watchTask(taskId, button) {
 }
 
 function toggleCustomLimit() {
-    const noLimit = document.getElementById('run-no-limit')?.checked === true;
+    const noLimit = document.getElementById('run-limit-none')?.checked === true;
     const input = document.getElementById('run-max-posts');
     if (!input) return;
     input.disabled = noLimit;
 }
 
 function getRunLimit() {
-    if (document.getElementById('run-no-limit')?.checked === true) return '0';
+    if (document.getElementById('run-limit-none')?.checked === true) return '0';
     return document.getElementById('run-max-posts')?.value || '';
 }
 
 function collectRunSettings() {
-    const noLimit = document.getElementById('run-no-limit')?.checked === true;
+    const noLimit = document.getElementById('run-limit-none')?.checked === true;
     return {
         platform: document.getElementById('run-platform')?.value || 'all',
         start_date: document.getElementById('run-start')?.value || '',
@@ -185,7 +185,7 @@ function scheduleRunSettingsSave() {
 function bindRunSettingsAutosave() {
     if (!document.getElementById('run-platform')) return;
     toggleCustomLimit();
-    ['run-platform', 'run-no-limit', 'run-download-media', 'run-take-screenshots', 'run-export-after'].forEach(id => {
+    ['run-platform', 'run-limit-custom', 'run-limit-none', 'run-download-media', 'run-take-screenshots', 'run-export-after'].forEach(id => {
         document.getElementById(id)?.addEventListener('change', () => {
             toggleCustomLimit();
             scheduleRunSettingsSave();
@@ -193,6 +193,13 @@ function bindRunSettingsAutosave() {
     });
     ['run-start', 'run-end', 'run-max-posts'].forEach(id => {
         const element = document.getElementById(id);
+        if (id === 'run-max-posts') {
+            element?.addEventListener('focus', () => {
+                const custom = document.getElementById('run-limit-custom');
+                if (custom) custom.checked = true;
+                toggleCustomLimit();
+            });
+        }
         element?.addEventListener('input', scheduleRunSettingsSave);
         element?.addEventListener('change', scheduleRunSettingsSave);
     });

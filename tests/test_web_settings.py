@@ -91,11 +91,12 @@ def test_dashboard_uses_saved_run_settings(monkeypatch, tmp_path):
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     assert '<option value="tiktok" selected>TikTok</option>' in html
-    assert 'id="run-max-posts" class="input" type="number" min="1" step="1" value="123"' in html
+    assert 'id="run-max-posts" class="input compact-number" type="number" min="1" step="1" value="123"' in html
     assert 'id="run-start" class="input" type="date" value="2025-01-01"' in html
     assert 'id="run-end" class="input" type="date" value="2025-02-01"' in html
     assert "Cantidad personalizada" in html
     assert "Sin límite" in html
+    assert "Alcance" not in html
     assert "Prueba rápida" not in html
     assert "Trabajo normal" not in html
 
@@ -144,4 +145,21 @@ def test_legacy_numeric_limit_becomes_custom(monkeypatch, tmp_path):
 
     assert response.status_code == 200
     html = response.get_data(as_text=True)
-    assert 'id="run-max-posts" class="input" type="number" min="1" step="1" value="50"' in html
+    assert 'id="run-max-posts" class="input compact-number" type="number" min="1" step="1" value="50"' in html
+
+
+def test_no_limit_is_same_quantity_control(monkeypatch, tmp_path):
+    accounts_file = tmp_path / "accounts.json"
+    accounts_file.write_text(
+        json.dumps({"run": {"limit_mode": "0", "custom_limit": "200"}, "accounts": []}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(web_app, "ACCOUNTS_FILE", accounts_file)
+
+    response = web_app.app.test_client().get("/?lang=es")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert 'id="run-limit-none" name="run-limit-mode" type="radio" value="0" checked' in html
+    assert 'id="run-max-posts" class="input compact-number" type="number" min="1" step="1" value="200" placeholder="200" disabled' in html
+    assert "Alcance" not in html

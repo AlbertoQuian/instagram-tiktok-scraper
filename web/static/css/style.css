@@ -433,13 +433,32 @@ a:hover {
     align-items: center;
 }
 
-.check-control {
-    min-height: 40px;
-    display: inline-flex;
+.limit-choice-group {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) minmax(160px, 0.55fr);
+    gap: 10px;
+}
+
+.limit-choice {
+    min-height: 48px;
+    display: grid;
+    grid-template-columns: auto auto minmax(92px, 1fr);
     align-items: center;
     gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fbfcfd;
     color: var(--text);
     font-weight: 650;
+}
+
+.limit-choice:last-child {
+    grid-template-columns: auto minmax(0, 1fr);
+}
+
+.compact-number {
+    max-width: 132px;
 }
 
 .field-note {
@@ -983,6 +1002,10 @@ textarea.input {
         grid-template-columns: 1fr;
     }
 
+    .limit-choice-group {
+        grid-template-columns: 1fr;
+    }
+
     .account-row-head {
         display: none;
     }
@@ -1033,8 +1056,18 @@ textarea.input {
     .settings-grid,
     .account-row,
     .guide-list,
-    .path-picker {
+    .path-picker,
+    .limit-choice-group {
         grid-template-columns: 1fr;
+    }
+
+    .limit-choice {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .limit-choice .compact-number {
+        grid-column: 1 / -1;
+        max-width: none;
     }
 
     .button-row,

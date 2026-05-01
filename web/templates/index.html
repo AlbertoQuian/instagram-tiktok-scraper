@@ -70,18 +70,20 @@
                     <option value="tiktok" {% if run_settings.platform == 'tiktok' %}selected{% endif %}>TikTok</option>
                 </select>
             </label>
-            <label class="form-field">
-                <span>{{ _('run.limit_custom') }}</span>
-                <input id="run-max-posts" class="input" type="number" min="1" step="1" value="{{ run_settings.custom_limit }}" placeholder="200" {% if run_settings.limit_mode == '0' %}disabled{% endif %}>
+            <div class="form-field wide">
+                <span>{{ _('run.max_posts') }}</span>
+                <div class="limit-choice-group">
+                    <label class="limit-choice">
+                        <input id="run-limit-custom" name="run-limit-mode" type="radio" value="custom" {% if run_settings.limit_mode != '0' %}checked{% endif %}>
+                        <span>{{ _('run.limit_custom') }}</span>
+                        <input id="run-max-posts" class="input compact-number" type="number" min="1" step="1" value="{{ run_settings.custom_limit }}" placeholder="200" {% if run_settings.limit_mode == '0' %}disabled{% endif %}>
+                    </label>
+                    <label class="limit-choice">
+                        <input id="run-limit-none" name="run-limit-mode" type="radio" value="0" {% if run_settings.limit_mode == '0' %}checked{% endif %}>
+                        <span>{{ _('run.limit_all') }}</span>
+                    </label>
+                </div>
                 <small>{{ _('run.max_posts_help') }}</small>
-            </label>
-            <div class="form-field">
-                <span>{{ _('run.limit_scope') }}</span>
-                <label class="check-control">
-                    <input id="run-no-limit" type="checkbox" {% if run_settings.limit_mode == '0' %}checked{% endif %}>
-                    <span>{{ _('run.limit_all') }}</span>
-                </label>
-                <small>{{ _('run.limit_all_help') }}</small>
             </div>
             <label class="form-field">
                 <span>{{ _('common.start_date') }}</span>
