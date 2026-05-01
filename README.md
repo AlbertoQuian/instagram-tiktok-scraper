@@ -386,11 +386,11 @@ A unified CSV is generated automatically after every run (skip with
 | `language` | Auto-detected language (ISO 639-1 code, e.g. `es`, `en`) |
 | `likes` | Like count |
 | `comments` | Comment count |
-| `views` | View count (video posts) |
-| `shares` | Share count (TikTok only; `0` for Instagram) |
-| `fb_likes` | Facebook cross-post likes (Instagram only; `0` for TikTok) |
+| `views` | View count when the platform exposes it; blank when unavailable |
+| `shares` | Share count when exposed, currently TikTok only; blank for Instagram |
+| `fb_likes` | Facebook cross-post likes when exposed by Instagram; blank otherwise |
 | `format` | Content format: `image`, `video`, or `carousel` |
-| `duration` | Video duration in seconds (TikTok only; `0` for images) |
+| `duration` | Video duration in seconds when known; blank when unavailable or not applicable |
 | `music_title` | Audio track title (TikTok only) |
 | `music_author` | Audio track artist (TikTok only) |
 | `media_files` | Paths to downloaded media |

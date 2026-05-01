@@ -6,6 +6,7 @@
 import json
 import pandas as pd
 import pytest
+from types import SimpleNamespace
 from pathlib import Path
 
 from utils.export import (
@@ -92,6 +93,30 @@ class TestBuildCSVRow:
         # distinction between zero-engagement and unknown values).
         assert row["likes"] is None
         assert row["media_files"] == ""
+
+    def test_missing_video_duration_is_unknown_not_zero(self, tmp_path):
+        post = {"format": "video", "media_files": []}
+        row = build_csv_row(post, "instagram", "news", tmp_path / "m.json")
+        assert row["duration"] is None
+
+    def test_uses_video_duration_alias(self, tmp_path):
+        post = {"format": "video", "video_duration": 12.5}
+        row = build_csv_row(post, "instagram", "news", tmp_path / "m.json")
+        assert row["duration"] == 12.5
+
+    def test_probes_local_video_duration(self, tmp_path, monkeypatch):
+        media_dir = tmp_path / "raw" / "instagram" / "test" / "media"
+        media_dir.mkdir(parents=True)
+        (media_dir / "video.mp4").write_bytes(b"")
+        meta_path = media_dir.parent / "test_metadata.json"
+
+        def fake_run(*args, **kwargs):
+            return SimpleNamespace(stdout="45.090295\n")
+
+        monkeypatch.setattr("utils.export.subprocess.run", fake_run)
+        post = {"format": "video", "media_files": ["video.mp4"]}
+        row = build_csv_row(post, "instagram", "news", meta_path)
+        assert row["duration"] == 45.09
 
 
 class TestExportToCSV:

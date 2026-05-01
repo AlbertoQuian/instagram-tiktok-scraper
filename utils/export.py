@@ -8,11 +8,14 @@ from __future__ import annotations
 
 import json
 import logging
+import subprocess
 from pathlib import Path
 
 import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+VIDEO_EXTENSIONS = {".mp4", ".webm", ".mkv", ".mov", ".m4v"}
 
 CSV_COLUMNS = [
     "category",
@@ -79,13 +82,88 @@ def parse_metadata_file(meta_path: Path, raw_dir: Path) -> tuple[str, str, list[
     return platform, category, posts
 
 
+def _as_number(value):
+    if value is None or value == "":
+        return None
+    if isinstance(value, (int, float)):
+        return value
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return value
+    return int(number) if number.is_integer() else round(number, 3)
+
+
+def _resolve_media_path(media_file: str, meta_path: Path) -> Path | None:
+    if not media_file or media_file.startswith(("http://", "https://")):
+        return None
+
+    media_path = Path(media_file)
+    if media_path.is_absolute():
+        candidates = [media_path]
+    else:
+        candidates = [
+            meta_path.parent / media_path,
+            meta_path.parent / "media" / media_path,
+            meta_path.parent / "media" / media_path.name,
+        ]
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _probe_media_duration(media_files: list[str], meta_path: Path):
+    for media_file in media_files:
+        media_path = _resolve_media_path(str(media_file), meta_path)
+        if not media_path or media_path.suffix.lower() not in VIDEO_EXTENSIONS:
+            continue
+        try:
+            result = subprocess.run(
+                [
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-show_entries",
+                    "format=duration",
+                    "-of",
+                    "default=noprint_wrappers=1:nokey=1",
+                    str(media_path),
+                ],
+                capture_output=True,
+                check=False,
+                text=True,
+                timeout=10,
+            )
+        except (FileNotFoundError, OSError, subprocess.SubprocessError):
+            continue
+        duration = _as_number(result.stdout.strip())
+        if isinstance(duration, (int, float)) and duration > 0:
+            return duration
+    return None
+
+
+def _post_duration(post: dict, meta_path: Path, media_files: list[str]):
+    for field in ("duration", "video_duration"):
+        duration = _as_number(post.get(field))
+        if duration is not None and duration != 0:
+            return duration
+
+    if str(post.get("format", "")).lower() == "video":
+        return _probe_media_duration(media_files, meta_path)
+    return None
+
+
 def build_csv_row(post: dict, platform: str, category: str, meta_path: Path) -> dict:
     """Build a single CSV row from a post dictionary."""
     media = post.get("media_files", [])
     if isinstance(media, list):
         media_str = "; ".join(str(m) for m in media)
+        media_files = [str(m) for m in media]
     else:
         media_str = str(media)
+        media_files = [item.strip() for item in media_str.split(";") if item.strip()]
 
     hashtags = post.get("hashtags", [])
     if isinstance(hashtags, list):
@@ -110,7 +188,7 @@ def build_csv_row(post: dict, platform: str, category: str, meta_path: Path) -> 
         "shares": post.get("shares"),
         "fb_likes": post.get("fb_likes"),
         "format": post.get("format", ""),
-        "duration": post.get("duration", 0),
+        "duration": _post_duration(post, meta_path, media_files),
         "music_title": post.get("music_title", ""),
         "music_author": post.get("music_author", ""),
         "media_files": media_str,

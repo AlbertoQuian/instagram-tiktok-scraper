@@ -480,6 +480,7 @@ class InstagramPlaywrightScraper:
                     "comments": None,
                     "views": None,
                     "format": "image",
+                    "duration": None,
                     "media_files": [],
                     "notes": "grid_fallback (no engagement data)",
                 }
@@ -656,7 +657,17 @@ class InstagramPlaywrightScraper:
                     node.get("edge_liked_by", {}).get("count")
                     or node.get("edge_media_preview_like", {}).get("count")
                 )
-            views = node.get("video_view_count") or node.get("view_count")
+            views = None
+            for view_field in (
+                "video_view_count",
+                "view_count",
+                "play_count",
+                "ig_play_count",
+                "clips_play_count",
+            ):
+                if node.get(view_field) is not None:
+                    views = node.get(view_field)
+                    break
         comments = node.get("comment_count")
         if comments is None:
             comments = node.get("edge_media_to_comment", {}).get("count")
@@ -686,6 +697,17 @@ class InstagramPlaywrightScraper:
             notes = "reel"
             link = f"/reel/{sc}/"
 
+        duration = None
+        if fmt == "video":
+            clips_metadata = node.get("clips_metadata") or {}
+            video_data = node.get("video") or {}
+            duration = (
+                node.get("duration")
+                or node.get("video_duration")
+                or clips_metadata.get("video_duration")
+                or video_data.get("duration")
+            )
+
         return {
             "platform": "Instagram",
             "post_id": sc,
@@ -705,6 +727,7 @@ class InstagramPlaywrightScraper:
             "shares": None,
             "fb_likes": fb_likes,
             "format": fmt,
+            "duration": duration,
             "thumbnail": thumb,
             "media_files": [],
             "metadata_file": "",
